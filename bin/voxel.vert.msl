@@ -1,0 +1,31 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct uniformViewProjMatrix
+{
+    float4x4 viewProjMatrix;
+};
+
+struct main0_out
+{
+    float4 gl_Position [[position]];
+};
+
+struct main0_in
+{
+    float3 inPosition [[attribute(0)]];
+};
+
+vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProjMatrix& _56 [[buffer(0)]], texture3d<float> cells [[texture(0)]], uint gl_InstanceIndex [[instance_id]])
+{
+    main0_out out = {};
+    int3 bounds = int3(cells.get_width(), cells.get_height(), cells.get_depth());
+    uint z = uint(int(gl_InstanceIndex) / (bounds.x * bounds.y));
+    uint y = uint((int(gl_InstanceIndex) / bounds.x) % bounds.y);
+    uint x = uint(int(gl_InstanceIndex) % bounds.x);
+    out.gl_Position = _56.viewProjMatrix * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
+    return out;
+}
+
