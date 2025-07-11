@@ -8,10 +8,15 @@ struct main0_out
     float4 outColor [[color(0)]];
 };
 
-fragment main0_out main0()
+struct main0_in
+{
+    float inValue [[user(locn0)]];
+};
+
+fragment main0_out main0(main0_in in [[stage_in]])
 {
     main0_out out = {};
-    out.outColor = float4(1.0);
+    out.outColor = float4(float3(in.inValue), 1.0);
     return out;
 }
 

@@ -3,13 +3,14 @@
 
 using namespace metal;
 
-struct uniformViewProjMatrix
+struct uniformViewProj
 {
-    float4x4 viewProjMatrix;
+    float4x4 viewProj;
 };
 
 struct main0_out
 {
+    float outValue [[user(locn0)]];
     float4 gl_Position [[position]];
 };
 
@@ -18,14 +19,15 @@ struct main0_in
     float3 inPosition [[attribute(0)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProjMatrix& _56 [[buffer(0)]], texture3d<float> cells [[texture(0)]], uint gl_InstanceIndex [[instance_id]])
+vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _59 [[buffer(0)]], texture3d<float> cells [[texture(0)]], uint gl_InstanceIndex [[instance_id]])
 {
     main0_out out = {};
     int3 bounds = int3(cells.get_width(), cells.get_height(), cells.get_depth());
     uint z = uint(int(gl_InstanceIndex) / (bounds.x * bounds.y));
     uint y = uint((int(gl_InstanceIndex) / bounds.x) % bounds.y);
     uint x = uint(int(gl_InstanceIndex) % bounds.x);
-    out.gl_Position = _56.viewProjMatrix * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
+    out.outValue = 1.0;
+    out.gl_Position = _59.viewProj * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
     return out;
 }
 
