@@ -23,6 +23,7 @@ add_executable(fluid_simulation WIN32
     imgui/imgui_widgets.cpp
     main.cpp
     mesh.cpp
+    rw_texture.cpp
     shader.cpp
 )
 set_target_properties(fluid_simulation PROPERTIES CXX_STANDARD 23)
@@ -83,7 +84,7 @@ function(add_shader FILE)
 endfunction()
 add_shader(add.comp)
 add_shader(clear.comp config.hpp)
-add_shader(diffuse.comp config.hpp util.glsl)
+add_shader(diffuse.comp config.hpp shader.glsl)
 add_shader(line.frag)
 add_shader(line.vert)
 add_shader(voxel.frag)

@@ -137,6 +137,9 @@ void FreeMeshes(SDL_GPUDevice* device)
     SDL_ReleaseGPUBuffer(device, vertexBuffer);
     SDL_ReleaseGPUBuffer(device, cubeIndexBuffer);
     SDL_ReleaseGPUBuffer(device, lineIndexBuffer);
+    vertexBuffer = nullptr;
+    cubeIndexBuffer = nullptr;
+    lineIndexBuffer = nullptr;
 }
 
 void RenderMesh(SDL_GPURenderPass* renderPass, MeshType type, uint32_t instances)

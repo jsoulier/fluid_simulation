@@ -3,17 +3,13 @@
 
 using namespace metal;
 
-struct uniformParams
-{
-    uint size;
-};
-
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
-kernel void main0(constant uniformParams& _19 [[buffer(0)]], texture3d<float, access::write> writeImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(texture3d<float, access::write> writeImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
+    int3 size = int3(writeImage.get_width(), writeImage.get_height(), writeImage.get_depth());
     int3 id = int3(gl_GlobalInvocationID);
-    if (all(id < int3(int(_19.size))))
+    if (all(id < size))
     {
         writeImage.write(float4(0.0), uint3(id));
     }

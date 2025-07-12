@@ -3,11 +3,6 @@
 
 using namespace metal;
 
-struct uniformParams
-{
-    uint size;
-};
-
 struct uniformViewProj
 {
     float4x4 viewProj;
@@ -24,16 +19,17 @@ struct main0_in
     float3 inPosition [[attribute(0)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _73 [[buffer(0)]], constant uniformParams& _16 [[buffer(1)]], texture3d<float> cells [[texture(0)]], uint gl_InstanceIndex [[instance_id]])
+vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _74 [[buffer(0)]], texture3d<float> cells [[texture(0)]], uint gl_InstanceIndex [[instance_id]])
 {
     main0_out out = {};
-    uint z = uint(int(gl_InstanceIndex)) / (_16.size * _16.size);
-    uint y = (uint(int(gl_InstanceIndex)) / _16.size) % _16.size;
-    uint x = uint(int(gl_InstanceIndex)) % _16.size;
+    int3 size = int3(cells.get_width(), cells.get_height(), cells.get_depth());
+    uint z = uint(int(gl_InstanceIndex) / (size.x * size.y));
+    uint y = uint((int(gl_InstanceIndex) / size.x) % size.y);
+    uint x = uint(int(gl_InstanceIndex) % size.x);
     out.outValue = cells.read(uint3(int3(int(x), int(y), int(z)))).x;
     if (out.outValue > 0.0)
     {
-        out.gl_Position = _73.viewProj * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
+        out.gl_Position = _74.viewProj * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
     }
     else
     {

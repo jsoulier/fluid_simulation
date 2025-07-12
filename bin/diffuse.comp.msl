@@ -1,74 +1,30 @@
-#pragma clang diagnostic ignored "-Wmissing-prototypes"
-#pragma clang diagnostic ignored "-Wmissing-braces"
-
 #include <metal_stdlib>
 #include <simd/simd.h>
 
 using namespace metal;
 
-template<typename T, size_t Num>
-struct spvUnsafeArray
-{
-    T elements[Num ? Num : 1];
-    
-    thread T& operator [] (size_t pos) thread
-    {
-        return elements[pos];
-    }
-    constexpr const thread T& operator [] (size_t pos) const thread
-    {
-        return elements[pos];
-    }
-    
-    device T& operator [] (size_t pos) device
-    {
-        return elements[pos];
-    }
-    constexpr const device T& operator [] (size_t pos) const device
-    {
-        return elements[pos];
-    }
-    
-    constexpr const constant T& operator [] (size_t pos) const constant
-    {
-        return elements[pos];
-    }
-    
-    threadgroup T& operator [] (size_t pos) threadgroup
-    {
-        return elements[pos];
-    }
-    constexpr const threadgroup T& operator [] (size_t pos) const threadgroup
-    {
-        return elements[pos];
-    }
-};
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
 struct uniformParams
 {
-    uint size;
-    uint offset;
     uint dt;
 };
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-constant spvUnsafeArray<int3, 27> _51 = spvUnsafeArray<int3, 27>({ int3(0), int3(0, 0, 1), int3(0, 0, 2), int3(0, 1, 0), int3(0, 1, 1), int3(0, 1, 2), int3(0, 2, 0), int3(0, 2, 1), int3(0, 2, 2), int3(1, 0, 0), int3(1, 0, 1), int3(1, 0, 2), int3(1, 1, 0), int3(1), int3(1, 1, 2), int3(1, 2, 0), int3(1, 2, 1), int3(1, 2, 2), int3(2, 0, 0), int3(2, 0, 1), int3(2, 0, 2), int3(2, 1, 0), int3(2, 1, 1), int3(2, 1, 2), int3(2, 2, 0), int3(2, 2, 1), int3(2) });
-
-kernel void main0(constant uniformParams& _54 [[buffer(0)]], texture3d<float> inDiffuse [[texture(0)]], texture3d<float, access::write> outDiffuse [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(texture3d<float> inDiffuse [[texture(0)]], texture3d<float, access::write> outDiffuse [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 id = (int3(gl_GlobalInvocationID) * int3(3)) + _51[_54.offset % 27u];
-    bool _74 = any(id >= int3(int(_54.size - 1u)));
-    bool _81;
-    if (!_74)
+    int3 size = int3(inDiffuse.get_width(), inDiffuse.get_height(), inDiffuse.get_depth());
+    int3 id = int3(gl_GlobalInvocationID);
+    bool _31 = any(id >= (size - int3(1)));
+    bool _40;
+    if (!_31)
     {
-        _81 = any(id <= int3(0));
+        _40 = any(id <= int3(0));
     }
     else
     {
-        _81 = _74;
+        _40 = _31;
     }
-    if (_81)
+    if (_40)
     {
         return;
     }

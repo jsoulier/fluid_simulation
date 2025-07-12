@@ -15,12 +15,12 @@
 
 #include "config.hpp"
 #include "mesh.hpp"
+#include "rw_texture.hpp"
 #include "shader.hpp"
 
 enum Texture
 {
-    TextureDiffuseX1,
-    TextureDiffuseX2,
+    TextureDiffuseX,
     TextureCount,
 };
 
@@ -42,7 +42,7 @@ static SDL_GPUComputePipeline* diffusePipeline;
 static SDL_GPUComputePipeline* addPipeline;
 static SDL_GPUTexture* colorTexture;
 static SDL_GPUTexture* depthTexture;
-static SDL_GPUTexture* textures[TextureCount];
+static ReadWriteTexture textures[TextureCount];
 static int size = 64;
 static int iterations = 4;
 static int dt;
@@ -187,34 +187,23 @@ static bool CreateTextures()
     return true;
 }
 
-static void ClearTexture(SDL_GPUTexture* texture, SDL_GPUCommandBuffer* commandBuffer)
+static void ClearTexture(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 {
-    SDL_GPUStorageTextureReadWriteBinding binding{};
-    binding.texture = texture;
-    SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &binding, 1, nullptr, 0);
+    SDL_GPUComputePass* computePass = texture.BeginWrite(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    struct
-    {
-        uint32_t size;
-    }
-    params;
-    params.size = size;
     int groups = (size + THREADS_3D - 1) / THREADS_3D;
     SDL_BindGPUComputePipeline(computePass, clearPipeline);
-    SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
 }
 
-static void Add(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* texture, const glm::ivec3& position, float value)
+static void Add(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, const glm::ivec3& position, float value)
 {
-    SDL_GPUStorageTextureReadWriteBinding binding{};
-    binding.texture = texture;
-    SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &binding, 1, nullptr, 0);
+    SDL_GPUComputePass* computePass = texture.BeginWrite(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
@@ -238,8 +227,7 @@ static bool CreateCells()
 {
     for (int i = 0; i < TextureCount; i++)
     {
-        SDL_ReleaseGPUTexture(device, textures[i]);
-        textures[i] = nullptr;
+        textures[i].Free(device);
     }
     SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
     if (!commandBuffer)
@@ -247,34 +235,19 @@ static bool CreateCells()
         SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
         return false;
     }
-    SDL_GPUTextureCreateInfo info{};
-    info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
-    info.type = SDL_GPU_TEXTURETYPE_3D;
-    info.usage = SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE |
-        SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ;
-    info.width = size;
-    info.height = size;
-    info.layer_count_or_depth = size;
-    info.num_levels = 1;
     for (int i = 0; i < TextureCount; i++)
     {
-        textures[i] = SDL_CreateGPUTexture(device, &info);
-        if (!textures[i])
+        if (!textures[i].Create(device, size))
         {
-            SDL_Log("Failed to create texture: %d, %s", i, SDL_GetError());
+            SDL_Log("Failed to create texture: %d", i);
             return false;
         }
-        ClearTexture(textures[i], commandBuffer);
+        ClearTexture(commandBuffer, textures[i]);
+        textures[i].Swap();
+        ClearTexture(commandBuffer, textures[i]);
     }
     SDL_SubmitGPUCommandBuffer(commandBuffer);
     return true;
-}
-
-static void Swap(Texture texture1, Texture texture2)
-{
-    SDL_GPUTexture* texture = textures[texture1];
-    textures[texture1] = textures[texture2];
-    textures[texture2] = texture;
 }
 
 static void UpdateViewProj()
@@ -311,15 +284,10 @@ static void RenderCube(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
-    struct
-    {
-        uint32_t size;
-    }
-    params;
-    params.size = size;
+    uint32_t size32 = size;
     SDL_BindGPUGraphicsPipeline(renderPass, linePipeline);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    SDL_PushGPUVertexUniformData(commandBuffer, 1, &params, sizeof(params));
+    SDL_PushGPUVertexUniformData(commandBuffer, 1, &size32, sizeof(size32));
     RenderMesh(renderPass, MeshTypeLineCube, 1);
     SDL_EndGPURenderPass(renderPass);
 }
@@ -340,16 +308,9 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
-    struct
-    {
-        uint32_t size;
-    }
-    params;
-    params.size = size;
     SDL_BindGPUGraphicsPipeline(renderPass, voxelPipeline);
-    SDL_BindGPUVertexStorageTextures(renderPass, 0, &textures[TextureDiffuseX2], 1);
+    SDL_BindGPUVertexStorageTextures(renderPass, 0, textures[TextureDiffuseX].GetWriteTextureAddress(), 1);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    SDL_PushGPUVertexUniformData(commandBuffer, 1, &params, sizeof(params));
     RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
     SDL_EndGPURenderPass(renderPass);
 }
@@ -383,37 +344,28 @@ static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swa
     SDL_EndGPURenderPass(renderPass);
 }
 
-static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, Texture readTexture, Texture writeTexture)
+static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 {
-    ClearTexture(textures[writeTexture], commandBuffer);
-    for (uint32_t offset = 0; offset < 27; offset++)
+    ClearTexture(commandBuffer, texture);
+    SDL_GPUComputePass* computePass = texture.BeginWrite(commandBuffer);
+    if (!computePass)
     {
-        SDL_GPUStorageTextureReadWriteBinding binding{};
-        binding.texture = textures[writeTexture];
-        SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &binding, 1, nullptr, 0);
-        if (!computePass)
-        {
-            SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
-            return;
-        }
-        int groups = (size / 3 + THREADS_3D - 1) / THREADS_3D;
-        struct
-        {
-            uint32_t size;
-            uint32_t offset;
-            uint32_t dt;
-        }
-        params;
-        params.size = size;
-        params.offset = offset;
-        params.dt = dt;
-        SDL_BindGPUComputePipeline(computePass, diffusePipeline);
-        SDL_BindGPUComputeStorageTextures(computePass, 0, &textures[readTexture], 1);
-        SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
-        SDL_DispatchGPUCompute(computePass, groups, groups, groups);
-        SDL_EndGPUComputePass(computePass);
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
     }
-    Swap(readTexture, writeTexture);
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    struct
+    {
+        uint32_t dt;
+    }
+    params;
+    params.dt = dt;
+    SDL_BindGPUComputePipeline(computePass, diffusePipeline);
+    SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
+    texture.Swap();
 }
 
 static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
@@ -479,8 +431,8 @@ static void Render()
         return;
     }
     UpdateViewProj();
-    Add(commandBuffer, textures[TextureDiffuseX2], glm::ivec3(size / 2), 1.0f); /* TODO: not for rendering */
-    Diffuse(commandBuffer, TextureDiffuseX1, TextureDiffuseX2);
+    Add(commandBuffer, textures[TextureDiffuseX], glm::ivec3(size / 2), 1.0f); /* TODO: not for rendering */
+    Diffuse(commandBuffer, textures[TextureDiffuseX]);
     RenderCube(commandBuffer);
     RenderVoxel(commandBuffer);
     Letterbox(commandBuffer, swapchainTexture);
@@ -553,7 +505,7 @@ int main(int argc, char** argv)
     SDL_HideWindow(window);
     for (int i = 0; i < TextureCount; i++)
     {
-        SDL_ReleaseGPUTexture(device, textures[i]);
+        textures[i].Free(device);
     }
     FreeMeshes(device);
     SDL_ReleaseGPUTexture(device, colorTexture);

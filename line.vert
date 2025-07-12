@@ -5,7 +5,7 @@ layout(set = 1, binding = 0) uniform uniformViewProj
 {
     mat4 viewProj;
 };
-layout(set = 1, binding = 1) uniform uniformParams
+layout(set = 1, binding = 1) uniform uniformSize
 {
     uint size;
 };

@@ -8,7 +8,7 @@ struct uniformViewProj
     float4x4 viewProj;
 };
 
-struct uniformParams
+struct uniformSize
 {
     uint size;
 };
@@ -23,7 +23,7 @@ struct main0_in
     float3 inPosition [[attribute(0)]];
 };
 
-vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _19 [[buffer(0)]], constant uniformParams& _32 [[buffer(1)]])
+vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _19 [[buffer(0)]], constant uniformSize& _32 [[buffer(1)]])
 {
     main0_out out = {};
     out.gl_Position = _19.viewProj * float4((in.inPosition + float3(0.5)) * float3(float(_32.size)), 1.0);
