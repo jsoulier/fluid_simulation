@@ -7,15 +7,17 @@ layout(set = 1, binding = 0) uniform uniformViewProj
 {
     mat4 viewProj;
 };
+layout(set = 1, binding = 1) uniform uniformParams
+{
+    uint size;
+};
 
 void main()
 {
     /* TODO: gl_InstanceIndex or gl_InstanceID? */
-    ivec3 bounds = imageSize(cells);
-    uint z = gl_InstanceIndex / (bounds.x * bounds.y);
-    uint y = (gl_InstanceIndex / bounds.x) % bounds.y;
-    uint x = gl_InstanceIndex % bounds.x;
-    outValue = 1.0f;
+    uint z = gl_InstanceIndex / (size * size);
+    uint y = (gl_InstanceIndex / size) % size;
+    uint x = gl_InstanceIndex % size;
     outValue = imageLoad(cells, ivec3(x, y, z)).x;
     if (outValue > 0.0f)
     {

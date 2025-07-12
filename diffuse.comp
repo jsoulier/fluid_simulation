@@ -20,4 +20,7 @@ void main()
     {
         return;
     }
+    /* TODO: */
+    float value = imageLoad(inDiffuse, id).x;
+    imageStore(outDiffuse, id, vec4(value));
 }

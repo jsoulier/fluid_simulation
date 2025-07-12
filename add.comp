@@ -1,0 +1,15 @@
+#version 450
+
+layout(local_size_x = 1) in;
+layout(set = 1, binding = 0, rgba32f) uniform image3D inOutImage;
+layout(set = 2, binding = 0) uniform uniformParams
+{
+    ivec3 position;
+    float value;
+};
+
+void main()
+{
+    float currentValue = imageLoad(inOutImage, position).x;
+    imageStore(inOutImage, position, vec4(currentValue + value));
+}
