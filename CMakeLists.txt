@@ -23,6 +23,7 @@ add_executable(fluid_simulation WIN32
     imgui/imgui_widgets.cpp
     main.cpp
     mesh.cpp
+    pipeline.cpp
     rw_texture.cpp
     shader.cpp
 )
@@ -85,8 +86,8 @@ endfunction()
 add_shader(add.comp)
 add_shader(clear.comp config.hpp)
 add_shader(diffuse.comp config.hpp shader.glsl)
-add_shader(line.frag)
-add_shader(line.vert)
+add_shader(outline.frag)
+add_shader(outline.vert)
 add_shader(voxel.frag)
 add_shader(voxel.vert)
 

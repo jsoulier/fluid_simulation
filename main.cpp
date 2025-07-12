@@ -15,12 +15,15 @@
 
 #include "config.hpp"
 #include "mesh.hpp"
+#include "pipeline.hpp"
 #include "rw_texture.hpp"
 #include "shader.hpp"
 
 enum Texture
 {
     TextureDiffuseX,
+    TextureDiffuseY,
+    TextureDiffuseZ,
     TextureCount,
 };
 
@@ -31,31 +34,27 @@ static constexpr float Pan = 0.0002f;
 static constexpr float Fov = glm::radians(60.0f);
 static constexpr float Near = 0.1f;
 static constexpr float Far = 1000.0f;
-static constexpr glm::vec3 Up{0.0f, 1.0f, 0.0f};
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
-static SDL_GPUGraphicsPipeline* linePipeline;
-static SDL_GPUGraphicsPipeline* voxelPipeline;
-static SDL_GPUComputePipeline* clearPipeline;
-static SDL_GPUComputePipeline* diffusePipeline;
-static SDL_GPUComputePipeline* addPipeline;
 static SDL_GPUTexture* colorTexture;
 static SDL_GPUTexture* depthTexture;
 static ReadWriteTexture textures[TextureCount];
 static int size = 64;
-static int iterations = 1; /* TODO: change to 4 */
-static int dt;
+static int iterations = 1;
+static float dt;
+static int speed = 100;
+static int cooldown;
 static uint64_t time1;
 static uint64_t time2;
-static float diffusion = 0.5f;
-static float viscosity;
+static float diffusion = 0.01f;
+static float viscosity = 0.01f;
 static uint32_t width;
 static uint32_t height;
 static glm::vec3 position;
 static float pitch;
 static float yaw;
-static float distance = 100.0f;
+static float distance = std::hypotf(size, size);
 static glm::mat4 viewProj;
 
 static bool Init()
@@ -100,63 +99,6 @@ static bool Init()
     return true;
 }
 
-static bool CreatePipelines()
-{
-    SDL_GPUShader* voxelFragShader = LoadShader(device, "voxel.frag");
-    SDL_GPUShader* voxelVertShader = LoadShader(device, "voxel.vert");
-    SDL_GPUShader* lineFragShader = LoadShader(device, "line.frag");
-    SDL_GPUShader* lineVertShader = LoadShader(device, "line.vert");
-    if (!voxelFragShader || !voxelVertShader || !lineFragShader || !lineVertShader)
-    {
-        SDL_Log("Failed to create shader(s)");
-        return false;
-    }
-    SDL_GPUVertexBufferDescription buffer{};
-    SDL_GPUVertexAttribute attrib{};
-    SDL_GPUColorTargetDescription target{};
-    buffer.slot = 0;
-    buffer.pitch = sizeof(float) * 3;
-    buffer.input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX;
-    buffer.instance_step_rate = 0;
-    attrib.location = 0;
-    attrib.buffer_slot = 0;
-    attrib.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
-    attrib.offset = 0;
-    target.format = SDL_GetGPUSwapchainTextureFormat(device, window);
-    SDL_GPUGraphicsPipelineCreateInfo info{};
-    info.vertex_shader = voxelVertShader;
-    info.fragment_shader = voxelFragShader;
-    info.vertex_input_state.vertex_buffer_descriptions = &buffer;
-    info.vertex_input_state.num_vertex_buffers = 1;
-    info.vertex_input_state.vertex_attributes = &attrib;
-    info.vertex_input_state.num_vertex_attributes = 1;
-    info.target_info.color_target_descriptions = &target;
-    info.target_info.num_color_targets = 1;
-    info.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-    info.target_info.has_depth_stencil_target = true;
-    info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
-    info.depth_stencil_state.enable_depth_test = true;
-    info.depth_stencil_state.enable_depth_write = true;
-    voxelPipeline = SDL_CreateGPUGraphicsPipeline(device, &info);
-    info.vertex_shader = lineVertShader;
-    info.fragment_shader = lineFragShader;
-    info.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST;
-    linePipeline = SDL_CreateGPUGraphicsPipeline(device, &info);
-    addPipeline = LoadComputePipeline(device, "add.comp");
-    diffusePipeline = LoadComputePipeline(device, "diffuse.comp");
-    clearPipeline = LoadComputePipeline(device, "clear.comp");
-    if (!voxelPipeline || !linePipeline || !addPipeline || !clearPipeline || !diffusePipeline)
-    {
-        SDL_Log("Failed to create voxel pipeline: %s", SDL_GetError());
-        return false;
-    }
-    SDL_ReleaseGPUShader(device, voxelFragShader);
-    SDL_ReleaseGPUShader(device, voxelVertShader);
-    SDL_ReleaseGPUShader(device, lineFragShader);
-    SDL_ReleaseGPUShader(device, lineVertShader);
-    return true;
-}
-
 static bool CreateTextures()
 {
     SDL_GPUTextureCreateInfo info{};
@@ -187,20 +129,6 @@ static bool CreateTextures()
     return true;
 }
 
-static void ClearTexture(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
-{
-    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
-    if (!computePass)
-    {
-        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
-        return;
-    }
-    int groups = (size + THREADS_3D - 1) / THREADS_3D;
-    SDL_BindGPUComputePipeline(computePass, clearPipeline);
-    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
-    SDL_EndGPUComputePass(computePass);
-}
-
 static void Add(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, const glm::ivec3& position, float value)
 {
     SDL_GPUComputePass* computePass = texture.BeginReadPass(commandBuffer);
@@ -209,26 +137,45 @@ static void Add(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, 
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    struct
-    {
-        glm::ivec3 position;
-        float value;
-    }
-    params;
-    params.position = position;
-    params.value = value;
-    SDL_BindGPUComputePipeline(computePass, addPipeline);
-    SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
+    BindPipeline(computePass, ComputePipelineTypeAdd);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &position, sizeof(position));
+    SDL_PushGPUComputeUniformData(commandBuffer, 1, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, 1, 1, 1);
     SDL_EndGPUComputePass(computePass);
 }
 
+static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float value = 0.0f)
+{
+    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeClear);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
+}
+
+static void UpdateViewProj()
+{
+    glm::vec3 vector;
+    vector.x = std::cos(pitch) * std::cos(yaw);
+    vector.y = std::sin(pitch);
+    vector.z = std::cos(pitch) * std::sin(yaw);
+    float ratio = static_cast<float>(Width) / Height;
+    glm::vec3 center = glm::vec3(size / 2);
+    glm::vec3 position = center - vector * distance;
+    glm::vec3 up{0.0f, 1.0f, 0.0f};
+    glm::mat4 view = glm::lookAt(position, position + vector, up);
+    glm::mat4 proj = glm::perspective(Fov, ratio, Near, Far);
+    viewProj = proj * view;
+}
+
 static bool CreateCells()
 {
-    for (int i = 0; i < TextureCount; i++)
-    {
-        textures[i].Free(device);
-    }
     SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
     if (!commandBuffer)
     {
@@ -242,29 +189,15 @@ static bool CreateCells()
             SDL_Log("Failed to create texture: %d", i);
             return false;
         }
-        ClearTexture(commandBuffer, textures[i]);
+        Clear(commandBuffer, textures[i]);
         textures[i].Swap();
-        ClearTexture(commandBuffer, textures[i]);
+        Clear(commandBuffer, textures[i]);
     }
     SDL_SubmitGPUCommandBuffer(commandBuffer);
     return true;
 }
 
-static void UpdateViewProj()
-{
-    glm::vec3 vector;
-    vector.x = std::cos(pitch) * std::cos(yaw);
-    vector.y = std::sin(pitch);
-    vector.z = std::cos(pitch) * std::sin(yaw);
-    float ratio = static_cast<float>(Width) / Height;
-    glm::vec3 center = glm::vec3(size / 2);
-    glm::vec3 position = center - vector * distance;
-    glm::mat4 view = glm::lookAt(position, position + vector, Up);
-    glm::mat4 proj = glm::perspective(Fov, ratio, Near, Far);
-    viewProj = proj * view;
-}
-
-static void RenderCube(SDL_GPUCommandBuffer* commandBuffer)
+static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
 {
     SDL_GPUColorTargetInfo colorInfo{};
     SDL_GPUDepthStencilTargetInfo depthInfo{};
@@ -284,10 +217,9 @@ static void RenderCube(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
-    uint32_t size32 = size;
-    SDL_BindGPUGraphicsPipeline(renderPass, linePipeline);
+    BindPipeline(renderPass, GraphicsPipelineTypeOutline);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    SDL_PushGPUVertexUniformData(commandBuffer, 1, &size32, sizeof(size32));
+    SDL_PushGPUVertexUniformData(commandBuffer, 1, &size, sizeof(size));
     RenderMesh(renderPass, MeshTypeLineCube, 1);
     SDL_EndGPURenderPass(renderPass);
 }
@@ -308,16 +240,11 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
-    SDL_BindGPUGraphicsPipeline(renderPass, voxelPipeline);
+    BindPipeline(renderPass, GraphicsPipelineTypeVoxel);
     SDL_BindGPUVertexStorageTextures(renderPass, 0, textures[TextureDiffuseX].GetReadTextureAddress(), 1);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
     RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
     SDL_EndGPURenderPass(renderPass);
-}
-
-static void RenderRaymarch(SDL_GPUCommandBuffer* commandBuffer)
-{
-    /* TODO: */
 }
 
 static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
@@ -355,17 +282,10 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
             return;
         }
         int groups = (size + THREADS_3D - 1) / THREADS_3D;
-        struct
-        {
-            float dt;
-            float diffusion;
-        }
-        params;
-        params.dt = dt;
-        params.diffusion = diffusion;
-        SDL_BindGPUComputePipeline(computePass, diffusePipeline);
+        BindPipeline(computePass, ComputePipelineTypeDiffuse);
         SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
-        SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
+        SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
+        SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
         SDL_EndGPUComputePass(computePass);
         texture.Swap();
@@ -413,7 +333,7 @@ static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapc
     SDL_BlitGPUTexture(commandBuffer, &info);
 }
 
-static void Render()
+static void Update()
 {
     SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
     if (!commandBuffer)
@@ -435,9 +355,15 @@ static void Render()
         return;
     }
     UpdateViewProj();
-    Add(commandBuffer, textures[TextureDiffuseX], glm::ivec3(size / 2), 1.0f); /* TODO: not for rendering */
-    Diffuse(commandBuffer, textures[TextureDiffuseX]);
-    RenderCube(commandBuffer);
+    if (cooldown <= 0)
+    {
+        Add(commandBuffer, textures[TextureDiffuseX], glm::ivec3(size / 2), 1.0f);
+        Diffuse(commandBuffer, textures[TextureDiffuseX]);
+        Diffuse(commandBuffer, textures[TextureDiffuseY]);
+        Diffuse(commandBuffer, textures[TextureDiffuseZ]);
+        cooldown = speed;
+    }
+    RenderOutline(commandBuffer);
     RenderVoxel(commandBuffer);
     Letterbox(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
@@ -451,7 +377,7 @@ int main(int argc, char** argv)
         SDL_Log("Failed to initialize");
         return 1;
     }
-    if (!CreatePipelines())
+    if (!CreatePipelines(device, window))
     {
         SDL_Log("Failed to create pipelines");
         return 1;
@@ -476,6 +402,7 @@ int main(int argc, char** argv)
     {
         time2 = SDL_GetTicks();
         dt = time2 - time1;
+        cooldown -= dt;
         time1 = time2;
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -504,7 +431,7 @@ int main(int argc, char** argv)
         {
             break;
         }
-        Render();
+        Update();
     }
     SDL_HideWindow(window);
     for (int i = 0; i < TextureCount; i++)
@@ -512,13 +439,7 @@ int main(int argc, char** argv)
         textures[i].Free(device);
     }
     FreeMeshes(device);
-    SDL_ReleaseGPUTexture(device, colorTexture);
-    SDL_ReleaseGPUTexture(device, depthTexture);
-    SDL_ReleaseGPUComputePipeline(device, clearPipeline);
-    SDL_ReleaseGPUComputePipeline(device, diffusePipeline);
-    SDL_ReleaseGPUComputePipeline(device, addPipeline);
-    SDL_ReleaseGPUGraphicsPipeline(device, voxelPipeline);
-    SDL_ReleaseGPUGraphicsPipeline(device, linePipeline);
+    FreePipelines(device);
     ImGui_ImplSDLGPU3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

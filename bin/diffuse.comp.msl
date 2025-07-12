@@ -44,17 +44,21 @@ struct spvUnsafeArray
     }
 };
 
-struct uniformParams
+struct uniformDeltaTime
 {
-    float dt;
+    float deltaTime;
+};
+
+struct uniformDiffusion
+{
     float diffusion;
 };
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
-constant spvUnsafeArray<int3, 6> _100 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
+constant spvUnsafeArray<int3, 6> _103 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
 
-kernel void main0(constant uniformParams& _48 [[buffer(0)]], texture3d<float> inDiffuse [[texture(0)]], texture3d<float, access::write> outDiffuse [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant uniformDeltaTime& _48 [[buffer(0)]], constant uniformDiffusion& _54 [[buffer(1)]], texture3d<float> inDiffuse [[texture(0)]], texture3d<float, access::write> outDiffuse [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
     int3 size = int3(inDiffuse.get_width(), inDiffuse.get_height(), inDiffuse.get_depth());
     int3 id = int3(gl_GlobalInvocationID);
@@ -72,14 +76,14 @@ kernel void main0(constant uniformParams& _48 [[buffer(0)]], texture3d<float> in
     {
         return;
     }
-    float a = ((_48.dt * _48.diffusion) * float(size.x - 2)) * float(size.x - 2);
+    float a = ((_48.deltaTime * _54.diffusion) * float(size.x - 2)) * float(size.x - 2);
     float c = 1.0 + (6.0 * a);
     do
     {
         float value = 0.0;
         for (int i = 0; i < 6; i++)
         {
-            int3 neighbor = id + _100[i];
+            int3 neighbor = id + _103[i];
             value += inDiffuse.read(uint3(neighbor)).x;
         }
         value *= a;

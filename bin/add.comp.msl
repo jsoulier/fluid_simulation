@@ -8,18 +8,22 @@ using namespace metal;
 template <typename ImageT>
 void spvImageFence(ImageT img) { img.fence(); }
 
-struct uniformParams
+struct uniformPosition
 {
-    packed_int3 position;
+    int3 position;
+};
+
+struct uniformValue
+{
     float value;
 };
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(1u);
 
-kernel void main0(constant uniformParams& _17 [[buffer(0)]], texture3d<float, access::read_write> inOutImage [[texture(0)]])
+kernel void main0(constant uniformPosition& _17 [[buffer(0)]], constant uniformValue& _33 [[buffer(1)]], texture3d<float, access::read_write> inOutImage [[texture(0)]])
 {
     spvImageFence(inOutImage);
     float currentValue = inOutImage.read(uint3(_17.position)).x;
-    inOutImage.write(float4(currentValue + _17.value), uint3(_17.position));
+    inOutImage.write(float4(currentValue + _33.value), uint3(_17.position));
 }
 

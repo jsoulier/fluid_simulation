@@ -4,6 +4,10 @@
 
 layout(local_size_x = THREADS_3D, local_size_y = THREADS_3D, local_size_z = THREADS_3D) in;
 layout(set = 1, binding = 0, r32f) uniform writeonly image3D writeImage;
+layout(set = 2, binding = 0) uniform uniformValue
+{
+    float value;
+};
 
 void main()
 {
@@ -11,6 +15,6 @@ void main()
     ivec3 id = ivec3(gl_GlobalInvocationID);
     if (all(lessThan(id, size)))
     {
-        imageStore(writeImage, id, vec4(0.0f));
+        imageStore(writeImage, id, vec4(value));
     }
 }
