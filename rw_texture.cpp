@@ -58,12 +58,12 @@ void ReadWriteTexture::Swap()
 
 SDL_GPUTexture* ReadWriteTexture::GetReadTexture()
 {
-    return textures[readIndex];
+    return *GetReadTextureAddress();
 }
 
 SDL_GPUTexture* ReadWriteTexture::GetWriteTexture()
 {
-    return textures[(readIndex + 1) % 2];
+    return *GetWriteTextureAddress();
 }
 
 SDL_GPUTexture** ReadWriteTexture::GetReadTextureAddress()

@@ -14,6 +14,9 @@ enum ComputePipelineType
     ComputePipelineTypeAdd,
     ComputePipelineTypeClear,
     ComputePipelineTypeDiffuse,
+    ComputePipelineTypeProject1,
+    ComputePipelineTypeProject2,
+    ComputePipelineTypeProject3,
     ComputePipelineTypeCount,
 };
 

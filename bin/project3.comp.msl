@@ -1,0 +1,91 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+#pragma clang diagnostic ignored "-Wmissing-braces"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+template<typename T, size_t Num>
+struct spvUnsafeArray
+{
+    T elements[Num ? Num : 1];
+    
+    thread T& operator [] (size_t pos) thread
+    {
+        return elements[pos];
+    }
+    constexpr const thread T& operator [] (size_t pos) const thread
+    {
+        return elements[pos];
+    }
+    
+    device T& operator [] (size_t pos) device
+    {
+        return elements[pos];
+    }
+    constexpr const device T& operator [] (size_t pos) const device
+    {
+        return elements[pos];
+    }
+    
+    constexpr const constant T& operator [] (size_t pos) const constant
+    {
+        return elements[pos];
+    }
+    
+    threadgroup T& operator [] (size_t pos) threadgroup
+    {
+        return elements[pos];
+    }
+    constexpr const threadgroup T& operator [] (size_t pos) const threadgroup
+    {
+        return elements[pos];
+    }
+};
+
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
+
+constant spvUnsafeArray<int3, 6> _159 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
+
+kernel void main0(texture3d<float> inPressure [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outVelocityX [[texture(4)]], texture3d<float, access::write> outVelocityY [[texture(5)]], texture3d<float, access::write> outVelocityZ [[texture(6)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    int3 size = int3(inPressure.get_width(), inPressure.get_height(), inPressure.get_depth());
+    int3 id = int3(gl_GlobalInvocationID);
+    bool _31 = any(id >= (size - int3(1)));
+    bool _40;
+    if (!_31)
+    {
+        _40 = any(id <= int3(0));
+    }
+    else
+    {
+        _40 = _31;
+    }
+    if (_40)
+    {
+        return;
+    }
+    float value = 0.0;
+    value += inPressure.read(uint3((id + int3(1, 0, 0)))).x;
+    value -= inPressure.read(uint3((id + int3(-1, 0, 0)))).x;
+    value *= 0.5;
+    value *= float(size.x);
+    value += inVelocityX.read(uint3(id)).x;
+    outVelocityX.write(float4(value), uint3(id));
+    value = 0.0;
+    value += inPressure.read(uint3((id + int3(0, 1, 0)))).x;
+    value -= inPressure.read(uint3((id + int3(0, -1, 0)))).x;
+    value *= 0.5;
+    value *= float(size.x);
+    value += inVelocityY.read(uint3(id)).x;
+    outVelocityY.write(float4(value), uint3(id));
+    value = 0.0;
+    value += inPressure.read(uint3((id + int3(0, 0, 1)))).x;
+    value -= inPressure.read(uint3((id + int3(0, 0, -1)))).x;
+    value *= 0.5;
+    value *= float(size.x);
+    value += inVelocityZ.read(uint3(id)).x;
+    outVelocityZ.write(float4(value), uint3(id));
+}
+
