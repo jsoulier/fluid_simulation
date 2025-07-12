@@ -45,7 +45,7 @@ static ReadWriteTexture textures[TextureCount];
 static int size = 64;
 static int iterations = 1;
 static float dt;
-static int speed = 100;
+static int delay = 100;
 static int cooldown;
 static uint64_t time1;
 static uint64_t time2;
@@ -58,6 +58,8 @@ static float pitch;
 static float yaw;
 static float distance = std::hypotf(size, size);
 static glm::mat4 viewProj;
+static int texture;
+static bool focused;
 
 static bool Init()
 {
@@ -206,7 +208,22 @@ static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swa
     io.DisplaySize.y = height;
     ImGui_ImplSDLGPU3_NewFrame();
     ImGui::NewFrame();
-    /* TODO: */
+    if (ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
+        ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
+        ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
+        ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
+        ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
+    }
+    if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::SliderInt("Delay", &delay, 0, 1000);
+        ImGui::SliderInt("Iterations", &iterations, 1, 20);
+        ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
+        ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
+    }
+    focused = ImGui::IsWindowFocused();
     ImGui::Render();
     ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
     SDL_GPUColorTargetInfo info{};
@@ -354,7 +371,7 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
         return;
     }
     BindPipeline(renderPass, GraphicsPipelineTypeVoxel);
-    SDL_BindGPUVertexStorageTextures(renderPass, 0, textures[TextureVelocityX].GetReadTextureAddress(), 1);
+    SDL_BindGPUVertexStorageTextures(renderPass, 0, textures[texture].GetReadTextureAddress(), 1);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
     RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
     SDL_EndGPURenderPass(renderPass);
@@ -438,7 +455,7 @@ static void Update()
         Project1(commandBuffer);
         Project2(commandBuffer);
         Project3(commandBuffer);
-        cooldown = speed;
+        cooldown = delay;
     }
     RenderOutline(commandBuffer);
     RenderVoxel(commandBuffer);
@@ -491,7 +508,7 @@ int main(int argc, char** argv)
                 distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
-                if (event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
+                if (!focused && event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
                     yaw += event.motion.xrel * Pan * dt;
