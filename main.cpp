@@ -7,31 +7,28 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlgpu3.h>
 
+#include <cassert>
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
 
+#include "config.hpp"
+#include "mesh.hpp"
 #include "shader.hpp"
 
 enum Texture
 {
-    TextureS,
-    TextureDensity,
-    TextureVx,
-    TextureVy,
-    TextureVz,
-    TextureVx0,
-    TextureVy0,
-    TextureVz0,
+    TextureDiffuseX1,
+    TextureDiffuseX2,
+    TextureFinal,
     TextureCount,
 };
 
-// static constexpr int Frames = 2;
 static constexpr int Width = 960;
 static constexpr int Height = 720;
-static constexpr float Zoom = 20.0f;
-static constexpr float Pan = 0.002f;
+static constexpr float Zoom = 1.0f;
+static constexpr float Pan = 0.0002f;
 static constexpr float Fov = glm::radians(60.0f);
 static constexpr float Near = 0.1f;
 static constexpr float Far = 1000.0f;
@@ -39,13 +36,17 @@ static constexpr glm::vec3 Up{0.0f, 1.0f, 0.0f};
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
+static SDL_GPUGraphicsPipeline* linePipeline;
 static SDL_GPUGraphicsPipeline* voxelPipeline;
-static SDL_GPUBuffer* voxelBuffer;
+static SDL_GPUComputePipeline* clearPipeline;
+static SDL_GPUComputePipeline* diffusePipeline;
 static SDL_GPUTexture* colorTexture;
 static SDL_GPUTexture* depthTexture;
 static SDL_GPUTexture* textures[TextureCount];
 static int size = 64;
-static float dt;
+static int dt;
+static uint64_t time1;
+static uint64_t time2;
 static float diffusion;
 static float viscosity;
 static uint32_t width;
@@ -102,7 +103,9 @@ static bool CreatePipelines()
 {
     SDL_GPUShader* voxelFragShader = LoadShader(device, "voxel.frag");
     SDL_GPUShader* voxelVertShader = LoadShader(device, "voxel.vert");
-    if (!voxelFragShader || !voxelVertShader)
+    SDL_GPUShader* lineFragShader = LoadShader(device, "line.frag");
+    SDL_GPUShader* lineVertShader = LoadShader(device, "line.vert");
+    if (!voxelFragShader || !voxelVertShader || !lineFragShader || !lineVertShader)
     {
         SDL_Log("Failed to create shader(s)");
         return false;
@@ -134,108 +137,21 @@ static bool CreatePipelines()
     info.depth_stencil_state.enable_depth_test = true;
     info.depth_stencil_state.enable_depth_write = true;
     voxelPipeline = SDL_CreateGPUGraphicsPipeline(device, &info);
-    if (!voxelPipeline)
+    info.vertex_shader = lineVertShader;
+    info.fragment_shader = lineFragShader;
+    info.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST;
+    linePipeline = SDL_CreateGPUGraphicsPipeline(device, &info);
+    diffusePipeline = LoadComputePipeline(device, "diffuse.comp");
+    clearPipeline = LoadComputePipeline(device, "clear.comp");
+    if (!voxelPipeline || !linePipeline || !clearPipeline || !diffusePipeline)
     {
         SDL_Log("Failed to create voxel pipeline: %s", SDL_GetError());
         return false;
     }
     SDL_ReleaseGPUShader(device, voxelFragShader);
     SDL_ReleaseGPUShader(device, voxelVertShader);
-    return true;
-}
-
-static bool CreateBuffers()
-{
-    SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
-    if (!commandBuffer)
-    {
-        SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
-        return false;
-    }
-    SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(commandBuffer);
-    if (!copyPass)
-    {
-        SDL_Log("Failed to begin copy pass: %s", SDL_GetError());
-        return false;
-    }
-    float vertices[36 * 3] =
-    {
-       -0.5f,-0.5f, 0.5f,
-        0.5f,-0.5f, 0.5f,
-        0.5f, 0.5f, 0.5f,
-       -0.5f,-0.5f, 0.5f,
-        0.5f, 0.5f, 0.5f,
-       -0.5f, 0.5f, 0.5f,
-       -0.5f,-0.5f,-0.5f,
-        0.5f, 0.5f,-0.5f,
-        0.5f,-0.5f,-0.5f,
-       -0.5f,-0.5f,-0.5f,
-       -0.5f, 0.5f,-0.5f,
-        0.5f, 0.5f,-0.5f,
-       -0.5f,-0.5f,-0.5f,
-       -0.5f,-0.5f, 0.5f,
-       -0.5f, 0.5f, 0.5f,
-       -0.5f,-0.5f,-0.5f,
-       -0.5f, 0.5f, 0.5f,
-       -0.5f, 0.5f,-0.5f,
-        0.5f,-0.5f,-0.5f,
-        0.5f, 0.5f, 0.5f,
-        0.5f,-0.5f, 0.5f,
-        0.5f,-0.5f,-0.5f,
-        0.5f, 0.5f,-0.5f,
-        0.5f, 0.5f, 0.5f,
-       -0.5f, 0.5f,-0.5f,
-       -0.5f, 0.5f, 0.5f,
-        0.5f, 0.5f, 0.5f,
-       -0.5f, 0.5f,-0.5f,
-        0.5f, 0.5f, 0.5f,
-        0.5f, 0.5f,-0.5f,
-       -0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f, 0.5f,
-       -0.5f,-0.5f, 0.5f,
-       -0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f,-0.5f,
-        0.5f,-0.5f, 0.5f,
-    };
-    SDL_GPUTransferBuffer* transferBuffer;
-    {
-        SDL_GPUTransferBufferCreateInfo info{};
-        info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-        info.size = sizeof(vertices);
-        transferBuffer = SDL_CreateGPUTransferBuffer(device, &info);
-        if (!transferBuffer)
-        {
-            SDL_Log("Failed to create transfer buffer: %s", SDL_GetError());
-            return false;
-        }
-    }
-    void* data = SDL_MapGPUTransferBuffer(device, transferBuffer, false);
-    if (!data)
-    {
-        SDL_Log("Failed to map transfer buffer: %s", SDL_GetError());
-        return false;
-    }
-    {
-        SDL_GPUBufferCreateInfo info{};
-        info.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-        info.size = sizeof(vertices);
-        voxelBuffer = SDL_CreateGPUBuffer(device, &info);
-        if (!voxelBuffer)
-        {
-            SDL_Log("Failed to create buffer: %s", SDL_GetError());
-            return false;
-        }
-    }
-    std::memcpy(data, vertices, sizeof(vertices));
-    SDL_GPUTransferBufferLocation location{};
-    SDL_GPUBufferRegion region{};
-    location.transfer_buffer = transferBuffer;
-    region.buffer = voxelBuffer;
-    region.size = sizeof(vertices);
-    SDL_UploadToGPUBuffer(copyPass, &location, &region, false);
-    SDL_ReleaseGPUTransferBuffer(device, transferBuffer);
-    SDL_EndGPUCopyPass(copyPass);
-    SDL_SubmitGPUCommandBuffer(commandBuffer);
+    SDL_ReleaseGPUShader(device, lineFragShader);
+    SDL_ReleaseGPUShader(device, lineVertShader);
     return true;
 }
 
@@ -269,12 +185,41 @@ static bool CreateTextures()
     return true;
 }
 
+static void ClearTexture(SDL_GPUTexture* texture, SDL_GPUCommandBuffer* commandBuffer)
+{
+    SDL_GPUStorageTextureReadWriteBinding binding{};
+    binding.texture = texture;
+    SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &binding, 1, nullptr, 0);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    struct
+    {
+        uint32_t size;
+    }
+    params;
+    params.size = size;
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    SDL_BindGPUComputePipeline(computePass, clearPipeline);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
+}
+
 static bool CreateCells()
 {
     for (int i = 0; i < TextureCount; i++)
     {
         SDL_ReleaseGPUTexture(device, textures[i]);
         textures[i] = nullptr;
+    }
+    SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
+    if (!commandBuffer)
+    {
+        SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
+        return false;
     }
     SDL_GPUTextureCreateInfo info{};
     info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
@@ -294,8 +239,17 @@ static bool CreateCells()
             SDL_Log("Failed to create texture: %d, %s", i, SDL_GetError());
             return false;
         }
+        ClearTexture(textures[i], commandBuffer);
     }
+    SDL_SubmitGPUCommandBuffer(commandBuffer);
     return true;
+}
+
+static void Swap(Texture texture1, Texture texture2)
+{
+    SDL_GPUTexture* texture = textures[texture1];
+    textures[texture1] = textures[texture2];
+    textures[texture2] = texture;
 }
 
 static void UpdateViewProj()
@@ -312,7 +266,7 @@ static void UpdateViewProj()
     viewProj = proj * view;
 }
 
-static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
+static void RenderCube(SDL_GPUCommandBuffer* commandBuffer)
 {
     SDL_GPUColorTargetInfo colorInfo{};
     SDL_GPUDepthStencilTargetInfo depthInfo{};
@@ -332,13 +286,39 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
-    SDL_GPUBufferBinding vertexBuffer{};
-    vertexBuffer.buffer = voxelBuffer;
-    SDL_BindGPUGraphicsPipeline(renderPass, voxelPipeline);
-    SDL_BindGPUVertexBuffers(renderPass, 0, &vertexBuffer, 1);
-    SDL_BindGPUVertexStorageTextures(renderPass, 0, &textures[TextureDensity], 1);
+    struct
+    {
+        uint32_t size;
+    }
+    params;
+    params.size = size;
+    SDL_BindGPUGraphicsPipeline(renderPass, linePipeline);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    SDL_DrawGPUPrimitives(renderPass, 36, size * size * size, 0, 0);
+    SDL_PushGPUVertexUniformData(commandBuffer, 1, &params, sizeof(params));
+    RenderMesh(renderPass, MeshTypeLineCube, 1);
+    SDL_EndGPURenderPass(renderPass);
+}
+
+static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
+{
+    SDL_GPUColorTargetInfo colorInfo{};
+    SDL_GPUDepthStencilTargetInfo depthInfo{};
+    colorInfo.texture = colorTexture;
+    colorInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    colorInfo.store_op = SDL_GPU_STOREOP_STORE;
+    depthInfo.texture = depthTexture;
+    depthInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    depthInfo.store_op = SDL_GPU_STOREOP_STORE;
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, &depthInfo);
+    if (!renderPass)
+    {
+        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_BindGPUGraphicsPipeline(renderPass, voxelPipeline);
+    SDL_BindGPUVertexStorageTextures(renderPass, 0, &textures[TextureFinal], 1);
+    SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
+    RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
     SDL_EndGPURenderPass(renderPass);
 }
 
@@ -369,6 +349,40 @@ static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swa
     }
     ImGui_ImplSDLGPU3_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderPass);
     SDL_EndGPURenderPass(renderPass);
+}
+
+static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, Texture readTexture, Texture writeTexture)
+{
+    ClearTexture(textures[writeTexture], commandBuffer);
+    for (uint32_t offset = 0; offset < 27; offset++)
+    {
+        SDL_GPUStorageTextureReadWriteBinding binding{};
+        binding.texture = textures[writeTexture];
+        SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &binding, 1, nullptr, 0);
+        if (!computePass)
+        {
+            SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+            SDL_CancelGPUCommandBuffer(commandBuffer);
+            return;
+        }
+        int groups = (size / 3 + THREADS_3D - 1) / THREADS_3D;
+        struct
+        {
+            uint32_t size;
+            uint32_t offset;
+            uint32_t dt;
+        }
+        params;
+        params.size = size;
+        params.offset = offset;
+        params.dt = dt;
+        SDL_BindGPUComputePipeline(computePass, diffusePipeline);
+        SDL_BindGPUComputeStorageTextures(computePass, 0, &textures[readTexture], 1);
+        SDL_PushGPUComputeUniformData(commandBuffer, 0, &params, sizeof(params));
+        SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+        SDL_EndGPUComputePass(computePass);
+    }
+    Swap(readTexture, writeTexture);
 }
 
 static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
@@ -434,6 +448,8 @@ static void Render()
         return;
     }
     UpdateViewProj();
+    Diffuse(commandBuffer, TextureDiffuseX1, TextureDiffuseX2);
+    RenderCube(commandBuffer);
     RenderVoxel(commandBuffer);
     Letterbox(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
@@ -452,9 +468,9 @@ int main(int argc, char** argv)
         SDL_Log("Failed to create pipelines");
         return 1;
     }
-    if (!CreateBuffers())
+    if (!CreateMeshes(device))
     {
-        SDL_Log("Failed to create buffers");
+        SDL_Log("Failed to create meshes");
         return 1;
     }
     if (!CreateTextures())
@@ -470,6 +486,9 @@ int main(int argc, char** argv)
     bool running = true;
     while (running)
     {
+        time2 = SDL_GetTicks();
+        dt = time2 - time1;
+        time1 = time2;
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -477,14 +496,14 @@ int main(int argc, char** argv)
             switch (event.type)
             {
             case SDL_EVENT_MOUSE_WHEEL:
-                distance = std::max(1.0f, distance - event.wheel.y * Zoom);
+                distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
                 if (event.motion.state & SDL_BUTTON_RMASK)
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
-                    yaw += event.motion.xrel * Pan;
-                    pitch -= event.motion.yrel * Pan;
+                    yaw += event.motion.xrel * Pan * dt;
+                    pitch -= event.motion.yrel * Pan * dt;
                     pitch = std::clamp(pitch, -limit, limit);
                 }
                 break;
@@ -504,10 +523,13 @@ int main(int argc, char** argv)
     {
         SDL_ReleaseGPUTexture(device, textures[i]);
     }
+    FreeMeshes(device);
     SDL_ReleaseGPUTexture(device, colorTexture);
     SDL_ReleaseGPUTexture(device, depthTexture);
-    SDL_ReleaseGPUBuffer(device, voxelBuffer);
+    SDL_ReleaseGPUComputePipeline(device, clearPipeline);
+    SDL_ReleaseGPUComputePipeline(device, diffusePipeline);
     SDL_ReleaseGPUGraphicsPipeline(device, voxelPipeline);
+    SDL_ReleaseGPUGraphicsPipeline(device, linePipeline);
     ImGui_ImplSDLGPU3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

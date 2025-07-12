@@ -16,13 +16,13 @@ void main()
     uint y = (gl_InstanceIndex / bounds.x) % bounds.y;
     uint x = gl_InstanceIndex % bounds.x;
     outValue = 1.0f;
-    // outValue = imageLoad(cells, ivec3(x, y, z)).x;
-    // if (outValue > 0.0f)
-    // {
+    outValue = imageLoad(cells, ivec3(x, y, z)).x;
+    if (outValue > 0.0f)
+    {
         gl_Position = viewProj * vec4(inPosition + vec3(x, y, z), 1.0f);
-    // }
-    // else
-    // {
-    //     gl_Position = vec4(0.0f, 0.0f, 2.0f, 1.0f);
-    // }
+    }
+    else
+    {
+        gl_Position = vec4(0.0f, 0.0f, 2.0f, 1.0f);
+    }
 }
