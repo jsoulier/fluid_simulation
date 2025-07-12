@@ -35,7 +35,15 @@ void ReadWriteTexture::Free(SDL_GPUDevice* device)
     }
 }
 
-SDL_GPUComputePass* ReadWriteTexture::BeginWrite(SDL_GPUCommandBuffer* commandBuffer)
+SDL_GPUComputePass* ReadWriteTexture::BeginReadPass(SDL_GPUCommandBuffer* commandBuffer)
+{
+    SDL_GPUStorageTextureReadWriteBinding binding{};
+    binding.texture = GetReadTexture();
+    binding.cycle = false;
+    return SDL_BeginGPUComputePass(commandBuffer, &binding, 1, nullptr, 0);
+}
+
+SDL_GPUComputePass* ReadWriteTexture::BeginWritePass(SDL_GPUCommandBuffer* commandBuffer)
 {
     SDL_GPUStorageTextureReadWriteBinding binding{};
     binding.texture = GetWriteTexture();

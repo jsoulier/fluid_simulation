@@ -8,7 +8,8 @@ layout(set = 0, binding = 0, r32f) uniform readonly image3D inDiffuse;
 layout(set = 1, binding = 0, r32f) uniform writeonly image3D outDiffuse;
 layout(set = 2, binding = 0) uniform uniformParams
 {
-    uint dt;
+    float dt;
+    float diffusion;
 };
 
 void main()
@@ -19,7 +20,7 @@ void main()
     {
         return;
     }
-    /* TODO: */
-    float value = imageLoad(inDiffuse, id).x;
-    imageStore(outDiffuse, id, vec4(value));
+    float a = dt * diffusion * (size.x - 2) * (size.x - 2);
+    float c = 1 + 6 * a;
+    LIN_SOLVE(id, inDiffuse, outDiffuse, a, c);
 }
