@@ -14,12 +14,13 @@
 #include <cstring>
 
 #include "config.hpp"
+#include "debug_group.hpp"
 #include "mesh.hpp"
 #include "pipeline.hpp"
 #include "rw_texture.hpp"
 #include "shader.hpp"
 
-enum Texture : uint32_t
+enum Texture
 {
     TextureVelocityX,
     TextureVelocityY,
@@ -138,8 +139,25 @@ static bool CreateTextures()
     return true;
 }
 
+static void UpdateViewProj()
+{
+    static constexpr glm::vec3 Up{0.0f, 1.0f, 0.0f};
+    float cosPitch = std::cos(pitch);
+    glm::vec3 vector;
+    vector.x = cosPitch * std::cos(yaw);
+    vector.y = std::sin(pitch);
+    vector.z = cosPitch * std::sin(yaw);
+    float ratio = static_cast<float>(Width) / Height;
+    glm::vec3 center = glm::vec3(size / 2);
+    glm::vec3 position = center - vector * distance;
+    glm::mat4 view = glm::lookAt(position, position + vector, Up);
+    glm::mat4 proj = glm::perspective(Fov, ratio, Near, Far);
+    viewProj = proj * view;
+}
+
 static void Add(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm::ivec3& position, float value)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUComputePass* computePass = textures[texture].BeginReadPass(commandBuffer);
     if (!computePass)
     {
@@ -155,6 +173,7 @@ static void Add(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm:
 
 static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float value = 0.0f)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -166,21 +185,6 @@ static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
-}
-
-static void UpdateViewProj()
-{
-    glm::vec3 vector;
-    vector.x = std::cos(pitch) * std::cos(yaw);
-    vector.y = std::sin(pitch);
-    vector.z = std::cos(pitch) * std::sin(yaw);
-    float ratio = static_cast<float>(Width) / Height;
-    glm::vec3 center = glm::vec3(size / 2);
-    glm::vec3 position = center - vector * distance;
-    glm::vec3 up{0.0f, 1.0f, 0.0f};
-    glm::mat4 view = glm::lookAt(position, position + vector, up);
-    glm::mat4 proj = glm::perspective(Fov, ratio, Near, Far);
-    viewProj = proj * view;
 }
 
 static bool CreateCells()
@@ -206,48 +210,9 @@ static bool CreateCells()
     return true;
 }
 
-static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
-{
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = width;
-    io.DisplaySize.y = height;
-    ImGui_ImplSDLGPU3_NewFrame();
-    ImGui::NewFrame();
-    if (ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
-        ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
-        ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
-        ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
-        ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
-        ImGui::RadioButton("Density Texture", &texture, TextureDensity);
-    }
-    if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::SliderInt("Delay", &delay, 0, 1000);
-        ImGui::SliderInt("Iterations", &iterations, 1, 50);
-        ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
-        ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
-    }
-    focused = ImGui::IsWindowFocused();
-    ImGui::Render();
-    ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
-    SDL_GPUColorTargetInfo info{};
-    info.texture = swapchainTexture;
-    info.load_op = SDL_GPU_LOADOP_LOAD;
-    info.store_op = SDL_GPU_STOREOP_STORE;
-    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &info, 1, nullptr);
-    if (!renderPass)
-    {
-        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
-        return;
-    }
-    ImGui_ImplSDLGPU3_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderPass);
-    SDL_EndGPURenderPass(renderPass);
-}
-
 static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float diffusion)
 {
+    DEBUG_GROUP(device, commandBuffer);
     for (int i = 0; i < iterations; i++)
     {
         SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
@@ -269,6 +234,7 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
 
 static void Project1(SDL_GPUCommandBuffer* commandBuffer)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUStorageTextureReadWriteBinding readWriteTextureBindings[2]{};
     readWriteTextureBindings[0].texture = textures[TexturePressure].GetWriteTexture();
     readWriteTextureBindings[1].texture = textures[TextureDivergence].GetWriteTexture();
@@ -291,6 +257,7 @@ static void Project1(SDL_GPUCommandBuffer* commandBuffer)
 
 static void Project2(SDL_GPUCommandBuffer* commandBuffer)
 {
+    DEBUG_GROUP(device, commandBuffer);
     for (int i = 0; i < iterations; i++)
     {
         SDL_GPUComputePass* computePass = textures[TexturePressure].BeginWritePass(commandBuffer);
@@ -310,6 +277,7 @@ static void Project2(SDL_GPUCommandBuffer* commandBuffer)
 
 static void Project3(SDL_GPUCommandBuffer* commandBuffer)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUStorageTextureReadWriteBinding readWriteTextureBindings[3]{};
     readWriteTextureBindings[0].texture = textures[TextureVelocityX].GetWriteTexture();
     readWriteTextureBindings[1].texture = textures[TextureVelocityY].GetWriteTexture();
@@ -335,6 +303,7 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
 
 static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUComputePass* computePass = textures[texture].BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -354,6 +323,7 @@ static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
 
 static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUComputePass* computePass = textures[TextureDensity].BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -374,6 +344,7 @@ static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
 
 static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUColorTargetInfo colorInfo{};
     SDL_GPUDepthStencilTargetInfo depthInfo{};
     colorInfo.texture = colorTexture;
@@ -401,6 +372,7 @@ static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
 
 static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUColorTargetInfo colorInfo{};
     SDL_GPUDepthStencilTargetInfo depthInfo{};
     colorInfo.texture = colorTexture;
@@ -424,6 +396,7 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
 
 static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
 {
+    DEBUG_GROUP(device, commandBuffer);
     SDL_GPUBlitInfo info{};
     const float colorRatio = static_cast<float>(Width) / Height;
     const float swapchainRatio = static_cast<float>(width) / height;
@@ -461,6 +434,47 @@ static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapc
     info.destination.h = letterboxH;
     info.filter = SDL_GPU_FILTER_NEAREST;
     SDL_BlitGPUTexture(commandBuffer, &info);
+}
+
+static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
+{
+    DEBUG_GROUP(device, commandBuffer);
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize.x = width;
+    io.DisplaySize.y = height;
+    ImGui_ImplSDLGPU3_NewFrame();
+    ImGui::NewFrame();
+    if (ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
+        ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
+        ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
+        ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
+        ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
+        ImGui::RadioButton("Density Texture", &texture, TextureDensity);
+    }
+    if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
+    {
+        ImGui::SliderInt("Delay", &delay, 0, 1000);
+        ImGui::SliderInt("Iterations", &iterations, 1, 50);
+        ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
+        ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
+    }
+    focused = ImGui::IsWindowFocused();
+    ImGui::Render();
+    ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
+    SDL_GPUColorTargetInfo info{};
+    info.texture = swapchainTexture;
+    info.load_op = SDL_GPU_LOADOP_LOAD;
+    info.store_op = SDL_GPU_STOREOP_STORE;
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &info, 1, nullptr);
+    if (!renderPass)
+    {
+        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+        return;
+    }
+    ImGui_ImplSDLGPU3_RenderDrawData(ImGui::GetDrawData(), commandBuffer, renderPass);
+    SDL_EndGPURenderPass(renderPass);
 }
 
 static void Update()

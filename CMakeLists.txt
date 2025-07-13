@@ -14,6 +14,7 @@ set(GLM_BUILD_LIBRARY OFF)
 add_subdirectory(SDL)
 add_subdirectory(glm)
 add_executable(fluid_simulation WIN32
+    debug_group.cpp
     imgui/imgui.cpp
     imgui/imgui_demo.cpp
     imgui/imgui_draw.cpp

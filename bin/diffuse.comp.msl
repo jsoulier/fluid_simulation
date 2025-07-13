@@ -58,9 +58,9 @@ constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
 constant spvUnsafeArray<int3, 6> _103 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
 
-kernel void main0(constant uniformDeltaTime& _48 [[buffer(0)]], constant uniformDiffusion& _54 [[buffer(1)]], texture3d<float> inVelocity [[texture(0)]], texture3d<float, access::write> outVelocity [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant uniformDeltaTime& _48 [[buffer(0)]], constant uniformDiffusion& _54 [[buffer(1)]], texture3d<float> inImage [[texture(0)]], texture3d<float, access::write> outImage [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inVelocity.get_width(), inVelocity.get_height(), inVelocity.get_depth());
+    int3 size = int3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
     int3 id = int3(gl_GlobalInvocationID);
     bool _31 = any(id >= (size - int3(1)));
     bool _40;
@@ -84,13 +84,13 @@ kernel void main0(constant uniformDeltaTime& _48 [[buffer(0)]], constant uniform
         for (int i = 0; i < 6; i++)
         {
             int3 neighbor = id + _103[i];
-            value += inVelocity.read(uint3(neighbor)).x;
+            value += inImage.read(uint3(neighbor)).x;
         }
         value *= a;
-        value += inVelocity.read(uint3(id)).x;
+        value += inImage.read(uint3(id)).x;
         value /= c;
         value = fast::min(value, 1.0);
-        outVelocity.write(float4(value), uint3(id));
+        outImage.write(float4(value), uint3(id));
     } while (false);
 }
 
