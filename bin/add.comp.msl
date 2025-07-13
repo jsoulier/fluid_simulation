@@ -20,10 +20,9 @@ struct uniformValue
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(1u);
 
-kernel void main0(constant uniformPosition& _17 [[buffer(0)]], constant uniformValue& _33 [[buffer(1)]], texture3d<float, access::read_write> inOutImage [[texture(0)]])
+kernel void main0(constant uniformPosition& _15 [[buffer(0)]], constant uniformValue& _30 [[buffer(1)]], texture3d<float, access::read_write> inOutImage [[texture(0)]])
 {
     spvImageFence(inOutImage);
-    float currentValue = inOutImage.read(uint3(_17.position)).x;
-    inOutImage.write(float4(currentValue + _33.value), uint3(_17.position));
+    inOutImage.write(float4(inOutImage.read(uint3(_15.position)).x + _30.value), uint3(_15.position));
 }
 

@@ -62,6 +62,7 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
     computePipelines[ComputePipelineTypeProject1] = LoadComputePipeline(device, "project1.comp");
     computePipelines[ComputePipelineTypeProject2] = LoadComputePipeline(device, "project2.comp");
     computePipelines[ComputePipelineTypeProject3] = LoadComputePipeline(device, "project3.comp");
+    computePipelines[ComputePipelineTypeAdvect] = LoadComputePipeline(device, "advect.comp");
     for (int i = ComputePipelineTypeCount - 1; i >= 0; i--)
     {
         if (!computePipelines[i])

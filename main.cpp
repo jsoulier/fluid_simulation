@@ -19,7 +19,7 @@
 #include "rw_texture.hpp"
 #include "shader.hpp"
 
-enum Texture
+enum Texture : uint32_t
 {
     TextureVelocityX,
     TextureVelocityY,
@@ -28,6 +28,10 @@ enum Texture
     TextureDivergence,
     TextureCount,
 };
+
+static_assert(TextureVelocityX == 0);
+static_assert(TextureVelocityY == 1);
+static_assert(TextureVelocityZ == 2);
 
 static constexpr int Width = 960;
 static constexpr int Height = 720;
@@ -43,9 +47,9 @@ static SDL_GPUTexture* colorTexture;
 static SDL_GPUTexture* depthTexture;
 static ReadWriteTexture textures[TextureCount];
 static int size = 64;
-static int iterations = 1;
+static int iterations = 5;
 static float dt;
-static int delay = 100;
+static int delay = 500;
 static int cooldown;
 static uint64_t time1;
 static uint64_t time2;
@@ -133,9 +137,9 @@ static bool CreateTextures()
     return true;
 }
 
-static void Add(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, const glm::ivec3& position, float value)
+static void Add(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm::ivec3& position, float value)
 {
-    SDL_GPUComputePass* computePass = texture.BeginReadPass(commandBuffer);
+    SDL_GPUComputePass* computePass = textures[texture].BeginReadPass(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
@@ -219,7 +223,7 @@ static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swa
     if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
         ImGui::SliderInt("Delay", &delay, 0, 1000);
-        ImGui::SliderInt("Iterations", &iterations, 1, 20);
+        ImGui::SliderInt("Iterations", &iterations, 1, 50);
         ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
         ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
     }
@@ -254,6 +258,7 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
         BindPipeline(computePass, ComputePipelineTypeDiffuse);
         SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
         SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
+        /* TODO: he passes in viscosity for diffusion? */
         SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
         SDL_EndGPUComputePass(computePass);
@@ -325,6 +330,25 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
     textures[TextureVelocityX].Swap();
     textures[TextureVelocityY].Swap();
     textures[TextureVelocityZ].Swap();
+}
+
+static void Advect(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
+{
+    SDL_GPUComputePass* computePass = textures[texture].BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeAdvect);
+    SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureVelocityX].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityY].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &texture, sizeof(texture));
+    SDL_PushGPUComputeUniformData(commandBuffer, 1, &dt, sizeof(dt));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
 }
 
 static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
@@ -444,9 +468,9 @@ static void Update()
     {
         /* TODO: remove */
         static int count = 0;
-        if (count++ < 5)
+        if (count++ < 2)
         {
-            Add(commandBuffer, textures[TextureVelocityX], glm::ivec3(size / 2), 1.0f);
+            Add(commandBuffer, TextureVelocityX, glm::ivec3(size / 2), 1.0f);
         }
         /* ENDTODO: */
         Diffuse(commandBuffer, textures[TextureVelocityX]);
@@ -455,6 +479,13 @@ static void Update()
         Project1(commandBuffer);
         Project2(commandBuffer);
         Project3(commandBuffer);
+        // Advect(commandBuffer, TextureVelocityX);
+        // Advect(commandBuffer, TextureVelocityY);
+        // Advect(commandBuffer, TextureVelocityZ);
+        // textures[TextureVelocityX].Swap();
+        // textures[TextureVelocityY].Swap();
+        // textures[TextureVelocityZ].Swap();
+        // Project
         cooldown = delay;
     }
     RenderOutline(commandBuffer);
