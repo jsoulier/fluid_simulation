@@ -26,6 +26,7 @@ enum Texture : uint32_t
     TextureVelocityZ,
     TexturePressure,
     TextureDivergence,
+    TextureDensity,
     TextureCount,
 };
 
@@ -62,7 +63,7 @@ static float pitch;
 static float yaw;
 static float distance = std::hypotf(size, size);
 static glm::mat4 viewProj;
-static int texture;
+static int texture = TextureDensity;
 static bool focused;
 
 static bool Init()
@@ -219,6 +220,7 @@ static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swa
         ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
         ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
         ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
+        ImGui::RadioButton("Density Texture", &texture, TextureDensity);
     }
     if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
     {
@@ -244,7 +246,7 @@ static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swa
     SDL_EndGPURenderPass(renderPass);
 }
 
-static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
+static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float diffusion)
 {
     for (int i = 0; i < iterations; i++)
     {
@@ -258,7 +260,6 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
         BindPipeline(computePass, ComputePipelineTypeDiffuse);
         SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
         SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
-        /* TODO: he passes in viscosity for diffusion? */
         SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
         SDL_EndGPUComputePass(computePass);
@@ -332,7 +333,7 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
     textures[TextureVelocityZ].Swap();
 }
 
-static void Advect(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
+static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
 {
     SDL_GPUComputePass* computePass = textures[texture].BeginWritePass(commandBuffer);
     if (!computePass)
@@ -341,7 +342,7 @@ static void Advect(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
         return;
     }
     int groups = (size + THREADS_3D - 1) / THREADS_3D;
-    BindPipeline(computePass, ComputePipelineTypeAdvect);
+    BindPipeline(computePass, ComputePipelineTypeAdvect1);
     SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureVelocityX].GetReadTextureAddress(), 1);
     SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityY].GetReadTextureAddress(), 1);
     SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
@@ -349,6 +350,26 @@ static void Advect(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
     SDL_PushGPUComputeUniformData(commandBuffer, 1, &dt, sizeof(dt));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
+}
+
+static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
+{
+    SDL_GPUComputePass* computePass = textures[TextureDensity].BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeAdvect2);
+    SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureDensity].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityX].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityY].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeStorageTextures(computePass, 3, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
+    textures[TextureDensity].Swap();
 }
 
 static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
@@ -473,19 +494,23 @@ static void Update()
             Add(commandBuffer, TextureVelocityX, glm::ivec3(size / 2), 1.0f);
         }
         /* ENDTODO: */
-        Diffuse(commandBuffer, textures[TextureVelocityX]);
-        Diffuse(commandBuffer, textures[TextureVelocityY]);
-        Diffuse(commandBuffer, textures[TextureVelocityZ]);
+        Diffuse(commandBuffer, textures[TextureVelocityX], viscosity);
+        Diffuse(commandBuffer, textures[TextureVelocityY], viscosity);
+        Diffuse(commandBuffer, textures[TextureVelocityZ], viscosity);
         Project1(commandBuffer);
         Project2(commandBuffer);
         Project3(commandBuffer);
-        // Advect(commandBuffer, TextureVelocityX);
-        // Advect(commandBuffer, TextureVelocityY);
-        // Advect(commandBuffer, TextureVelocityZ);
-        // textures[TextureVelocityX].Swap();
-        // textures[TextureVelocityY].Swap();
-        // textures[TextureVelocityZ].Swap();
-        // Project
+        Advect1(commandBuffer, TextureVelocityX);
+        Advect1(commandBuffer, TextureVelocityY);
+        Advect1(commandBuffer, TextureVelocityZ);
+        textures[TextureVelocityX].Swap();
+        textures[TextureVelocityY].Swap();
+        textures[TextureVelocityZ].Swap();
+        Project1(commandBuffer);
+        Project2(commandBuffer);
+        Project3(commandBuffer);
+        Diffuse(commandBuffer, textures[TextureDensity], diffusion);
+        Advect2(commandBuffer);
         cooldown = delay;
     }
     RenderOutline(commandBuffer);

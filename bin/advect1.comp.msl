@@ -1,0 +1,260 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+#pragma clang diagnostic ignored "-Wmissing-braces"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+template<typename T, size_t Num>
+struct spvUnsafeArray
+{
+    T elements[Num ? Num : 1];
+    
+    thread T& operator [] (size_t pos) thread
+    {
+        return elements[pos];
+    }
+    constexpr const thread T& operator [] (size_t pos) const thread
+    {
+        return elements[pos];
+    }
+    
+    device T& operator [] (size_t pos) device
+    {
+        return elements[pos];
+    }
+    constexpr const device T& operator [] (size_t pos) const device
+    {
+        return elements[pos];
+    }
+    
+    constexpr const constant T& operator [] (size_t pos) const constant
+    {
+        return elements[pos];
+    }
+    
+    threadgroup T& operator [] (size_t pos) threadgroup
+    {
+        return elements[pos];
+    }
+    constexpr const threadgroup T& operator [] (size_t pos) const threadgroup
+    {
+        return elements[pos];
+    }
+};
+
+struct uniformVelocity
+{
+    uint velocity;
+};
+
+struct uniformDeltaTime
+{
+    float deltaTime;
+};
+
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
+
+constant spvUnsafeArray<int3, 6> _834 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
+
+kernel void main0(constant uniformVelocity& _46 [[buffer(0)]], constant uniformDeltaTime& _69 [[buffer(1)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float, access::write> outVelocity [[texture(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
+    int3 id = int3(gl_GlobalInvocationID);
+    bool _31 = any(id >= (size - int3(1)));
+    bool _40;
+    if (!_31)
+    {
+        _40 = any(id <= int3(0));
+    }
+    else
+    {
+        _40 = _31;
+    }
+    if (_40)
+    {
+        return;
+    }
+    if (_46.velocity == 0u)
+    {
+        do
+        {
+            float N = float(size.x);
+            float3 dt = float3(size - int3(2)) * _69.deltaTime;
+            float tmp1 = dt.x * inVelocityX.read(uint3(id)).x;
+            float tmp2 = dt.y * inVelocityY.read(uint3(id)).x;
+            float tmp3 = dt.z * inVelocityZ.read(uint3(id)).x;
+            float x = float(id.x) - tmp1;
+            float y = float(id.y) - tmp2;
+            float z = float(id.z) - tmp3;
+            if (x < 0.5)
+            {
+                x = 0.5;
+            }
+            if (x > (N + 0.5))
+            {
+                x = N + 0.5;
+            }
+            float i0 = floor(x);
+            float i1 = i0 + 1.0;
+            if (y < 0.5)
+            {
+                y = 0.5;
+            }
+            if (y > (N + 0.5))
+            {
+                y = N + 0.5;
+            }
+            float j0 = floor(y);
+            float j1 = j0 + 1.0;
+            if (z < 0.5)
+            {
+                z = 0.5;
+            }
+            if (z > (N + 0.5))
+            {
+                z = N + 0.5;
+            }
+            float k0 = floor(z);
+            float k1 = k0 + 1.0;
+            float s1 = x - i0;
+            float s0 = 1.0 - s1;
+            float t1 = y - j0;
+            float t0 = 1.0 - t1;
+            float u1 = z - k0;
+            float u0 = 1.0 - u1;
+            int i0i = int(i0);
+            int i1i = int(i1);
+            int j0i = int(j0);
+            int j1i = int(j1);
+            int k0i = int(k0);
+            int k1i = int(k1);
+            float value = (s0 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i0i, j0i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j0i, k1i))).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i0i, j1i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j1i, k1i))).x))))) + (s1 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i1i, j0i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j0i, k1i))).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i1i, j1i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j1i, k1i))).x)))));
+            outVelocity.write(float4(value), uint3(id));
+        } while (false);
+    }
+    else
+    {
+        if (_46.velocity == 1u)
+        {
+            do
+            {
+                float N_1 = float(size.x);
+                float3 dt_1 = float3(size - int3(2)) * _69.deltaTime;
+                float tmp1_1 = dt_1.x * inVelocityX.read(uint3(id)).x;
+                float tmp2_1 = dt_1.y * inVelocityY.read(uint3(id)).x;
+                float tmp3_1 = dt_1.z * inVelocityZ.read(uint3(id)).x;
+                float x_1 = float(id.x) - tmp1_1;
+                float y_1 = float(id.y) - tmp2_1;
+                float z_1 = float(id.z) - tmp3_1;
+                if (x_1 < 0.5)
+                {
+                    x_1 = 0.5;
+                }
+                if (x_1 > (N_1 + 0.5))
+                {
+                    x_1 = N_1 + 0.5;
+                }
+                float i0_1 = floor(x_1);
+                float i1_1 = i0_1 + 1.0;
+                if (y_1 < 0.5)
+                {
+                    y_1 = 0.5;
+                }
+                if (y_1 > (N_1 + 0.5))
+                {
+                    y_1 = N_1 + 0.5;
+                }
+                float j0_1 = floor(y_1);
+                float j1_1 = j0_1 + 1.0;
+                if (z_1 < 0.5)
+                {
+                    z_1 = 0.5;
+                }
+                if (z_1 > (N_1 + 0.5))
+                {
+                    z_1 = N_1 + 0.5;
+                }
+                float k0_1 = floor(z_1);
+                float k1_1 = k0_1 + 1.0;
+                float s1_1 = x_1 - i0_1;
+                float s0_1 = 1.0 - s1_1;
+                float t1_1 = y_1 - j0_1;
+                float t0_1 = 1.0 - t1_1;
+                float u1_1 = z_1 - k0_1;
+                float u0_1 = 1.0 - u1_1;
+                int i0i_1 = int(i0_1);
+                int i1i_1 = int(i1_1);
+                int j0i_1 = int(j0_1);
+                int j1i_1 = int(j1_1);
+                int k0i_1 = int(k0_1);
+                int k1i_1 = int(k1_1);
+                float value_1 = (s0_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k1i_1))).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k1i_1))).x))))) + (s1_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k1i_1))).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k1i_1))).x)))));
+                outVelocity.write(float4(value_1), uint3(id));
+            } while (false);
+        }
+        else
+        {
+            if (_46.velocity == 2u)
+            {
+                do
+                {
+                    float N_2 = float(size.x);
+                    float3 dt_2 = float3(size - int3(2)) * _69.deltaTime;
+                    float tmp1_2 = dt_2.x * inVelocityX.read(uint3(id)).x;
+                    float tmp2_2 = dt_2.y * inVelocityY.read(uint3(id)).x;
+                    float tmp3_2 = dt_2.z * inVelocityZ.read(uint3(id)).x;
+                    float x_2 = float(id.x) - tmp1_2;
+                    float y_2 = float(id.y) - tmp2_2;
+                    float z_2 = float(id.z) - tmp3_2;
+                    if (x_2 < 0.5)
+                    {
+                        x_2 = 0.5;
+                    }
+                    if (x_2 > (N_2 + 0.5))
+                    {
+                        x_2 = N_2 + 0.5;
+                    }
+                    float i0_2 = floor(x_2);
+                    float i1_2 = i0_2 + 1.0;
+                    if (y_2 < 0.5)
+                    {
+                        y_2 = 0.5;
+                    }
+                    if (y_2 > (N_2 + 0.5))
+                    {
+                        y_2 = N_2 + 0.5;
+                    }
+                    float j0_2 = floor(y_2);
+                    float j1_2 = j0_2 + 1.0;
+                    if (z_2 < 0.5)
+                    {
+                        z_2 = 0.5;
+                    }
+                    if (z_2 > (N_2 + 0.5))
+                    {
+                        z_2 = N_2 + 0.5;
+                    }
+                    float k0_2 = floor(z_2);
+                    float k1_2 = k0_2 + 1.0;
+                    float s1_2 = x_2 - i0_2;
+                    float s0_2 = 1.0 - s1_2;
+                    float t1_2 = y_2 - j0_2;
+                    float t0_2 = 1.0 - t1_2;
+                    float u1_2 = z_2 - k0_2;
+                    float u0_2 = 1.0 - u1_2;
+                    int i0i_2 = int(i0_2);
+                    int i1i_2 = int(i1_2);
+                    int j0i_2 = int(j0_2);
+                    int j1i_2 = int(j1_2);
+                    int k0i_2 = int(k0_2);
+                    int k1i_2 = int(k1_2);
+                    float value_2 = (s0_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k1i_2))).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k1i_2))).x))))) + (s1_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k1i_2))).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k1i_2))).x)))));
+                    outVelocity.write(float4(value_2), uint3(id));
+                } while (false);
+            }
+        }
+    }
+}
+
