@@ -1,0 +1,20 @@
+#version 450
+
+layout(local_size_x = 1) in;
+layout(set = 1, binding = 0, rgba32f) uniform image3D inOutImage;
+layout(set = 2, binding = 0) uniform uniformValue
+{
+    float value;
+};
+
+void main()
+{
+    ivec3 size = imageSize(inOutImage);
+    ivec3 id = ivec3(gl_GlobalInvocationID);
+    if (any(greaterThanEqual(id, size)))
+    {
+        return;
+    }
+    float current = imageLoad(inOutImage, id).x;
+    imageStore(inOutImage, id, vec4(current + value));
+}

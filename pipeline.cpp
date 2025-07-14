@@ -56,7 +56,8 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
             return false;
         }
     }
-    computePipelines[ComputePipelineTypeAdd] = LoadComputePipeline(device, "add.comp");
+    computePipelines[ComputePipelineTypeAdd1] = LoadComputePipeline(device, "add1.comp");
+    computePipelines[ComputePipelineTypeAdd2] = LoadComputePipeline(device, "add2.comp");
     computePipelines[ComputePipelineTypeClear] = LoadComputePipeline(device, "clear.comp");
     computePipelines[ComputePipelineTypeDiffuse] = LoadComputePipeline(device, "diffuse.comp");
     computePipelines[ComputePipelineTypeProject1] = LoadComputePipeline(device, "project1.comp");

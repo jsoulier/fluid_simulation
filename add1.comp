@@ -13,5 +13,6 @@ layout(set = 2, binding = 1) uniform uniformValue
 
 void main()
 {
-    imageStore(inOutImage, position, vec4(imageLoad(inOutImage, position).x + value));
+    float current = imageLoad(inOutImage, position).x;
+    imageStore(inOutImage, position, vec4(current + value));
 }

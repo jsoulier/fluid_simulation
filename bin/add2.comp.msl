@@ -1,0 +1,30 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+template <typename ImageT>
+void spvImageFence(ImageT img) { img.fence(); }
+
+struct uniformValue
+{
+    float value;
+};
+
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(1u);
+
+kernel void main0(constant uniformValue& _45 [[buffer(0)]], texture3d<float, access::read_write> inOutImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    int3 size = int3(inOutImage.get_width(), inOutImage.get_height(), inOutImage.get_depth());
+    int3 id = int3(gl_GlobalInvocationID);
+    if (any(id >= size))
+    {
+        return;
+    }
+    spvImageFence(inOutImage);
+    float current = inOutImage.read(uint3(id)).x;
+    inOutImage.write(float4(current + _45.value), uint3(id));
+}
+

@@ -24,7 +24,6 @@ const ivec3 VonNeumann[6] = ivec3[]
         value *= a; \
         value += imageLoad(inImage, id).x; \
         value /= c; \
-        value = min(value, 1.0f); \
         imageStore(outImage, id, vec4(value)); \
     } \
     while (false) \

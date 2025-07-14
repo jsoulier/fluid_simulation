@@ -48,7 +48,7 @@ static SDL_GPUDevice* device;
 static SDL_GPUTexture* colorTexture;
 static SDL_GPUTexture* depthTexture;
 static ReadWriteTexture textures[TextureCount];
-static int size = 64;
+static int size = 128;
 static int iterations = 5;
 static float dt;
 static int delay = 500;
@@ -155,7 +155,7 @@ static void UpdateViewProj()
     viewProj = proj * view;
 }
 
-static void Add(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm::ivec3& position, float value)
+static void Add1(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm::ivec3& position, float value)
 {
     DEBUG_GROUP(device, commandBuffer);
     SDL_GPUComputePass* computePass = textures[texture].BeginReadPass(commandBuffer);
@@ -164,10 +164,26 @@ static void Add(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm:
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    BindPipeline(computePass, ComputePipelineTypeAdd);
+    BindPipeline(computePass, ComputePipelineTypeAdd1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &position, sizeof(position));
     SDL_PushGPUComputeUniformData(commandBuffer, 1, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, 1, 1, 1);
+    SDL_EndGPUComputePass(computePass);
+}
+
+static void Add2(SDL_GPUCommandBuffer* commandBuffer, Texture texture, float value)
+{
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUComputePass* computePass = textures[texture].BeginReadPass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeAdd2);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
 }
 
@@ -185,6 +201,47 @@ static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
+}
+
+static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
+{
+    DEBUG_GROUP(device, commandBuffer);
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize.x = width;
+    io.DisplaySize.y = height;
+    ImGui_ImplSDLGPU3_NewFrame();
+    ImGui::NewFrame();
+    ImGui::SliderInt("Delay", &delay, 0, 1000);
+    ImGui::SliderInt("Iterations", &iterations, 1, 50);
+    ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
+    ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
+    ImGui::Separator();
+    ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
+    ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
+    ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
+    ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
+    ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
+    ImGui::RadioButton("Density Texture", &texture, TextureDensity);
+    ImGui::Separator();
+    static float density;
+    static float velocity[3];
+    static int position[3];
+    if (ImGui::Button("Add Velocity"))
+    {
+        Add2(commandBuffer, TextureVelocityX, velocity[0]);
+        Add2(commandBuffer, TextureVelocityY, velocity[1]);
+        Add2(commandBuffer, TextureVelocityZ, velocity[2]);
+    }
+    ImGui::SliderFloat3("Velocity", velocity, -1.0f, 1.0f);
+    if (ImGui::Button("Add Density"))
+    {
+        Add1(commandBuffer, TextureDensity, {position[0], position[1], position[2]}, density);
+    }
+    ImGui::SliderFloat("Density", &density, 0.0f, 1.0f);
+    ImGui::SliderInt3("Position", position, 0, size - 1);
+    focused = ImGui::IsWindowFocused();
+    ImGui::Render();
+    ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
 }
 
 static bool CreateCells()
@@ -438,31 +495,6 @@ static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapc
 
 static void RenderImGui(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
 {
-    DEBUG_GROUP(device, commandBuffer);
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = width;
-    io.DisplaySize.y = height;
-    ImGui_ImplSDLGPU3_NewFrame();
-    ImGui::NewFrame();
-    if (ImGui::CollapsingHeader("Textures", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
-        ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
-        ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
-        ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
-        ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
-        ImGui::RadioButton("Density Texture", &texture, TextureDensity);
-    }
-    if (ImGui::CollapsingHeader("Settings", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::SliderInt("Delay", &delay, 0, 1000);
-        ImGui::SliderInt("Iterations", &iterations, 1, 50);
-        ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
-        ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
-    }
-    focused = ImGui::IsWindowFocused();
-    ImGui::Render();
-    ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
     SDL_GPUColorTargetInfo info{};
     info.texture = swapchainTexture;
     info.load_op = SDL_GPU_LOADOP_LOAD;
@@ -498,6 +530,7 @@ static void Update()
         SDL_CancelGPUCommandBuffer(commandBuffer);
         return;
     }
+    UpdateImGui(commandBuffer);
     UpdateViewProj();
     if (cooldown <= 0)
     {
@@ -505,7 +538,7 @@ static void Update()
         static int count = 0;
         if (count++ < 2)
         {
-            Add(commandBuffer, TextureVelocityX, glm::ivec3(size / 2), 1.0f);
+            Add1(commandBuffer, TextureVelocityX, glm::ivec3(size / 2), 1.0f);
         }
         /* ENDTODO: */
         Diffuse(commandBuffer, textures[TextureVelocityX], viscosity);

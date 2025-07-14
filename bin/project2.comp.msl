@@ -77,7 +77,6 @@ kernel void main0(texture3d<float> inDivergence [[texture(0)]], texture3d<float,
         value *= 1.0;
         value += inDivergence.read(uint3(id)).x;
         value /= 6.0;
-        value = fast::min(value, 1.0);
         outPressure.write(float4(value), uint3(id));
     } while (false);
 }

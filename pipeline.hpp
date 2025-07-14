@@ -11,7 +11,8 @@ enum GraphicsPipelineType
 
 enum ComputePipelineType
 {
-    ComputePipelineTypeAdd,
+    ComputePipelineTypeAdd1,
+    ComputePipelineTypeAdd2,
     ComputePipelineTypeClear,
     ComputePipelineTypeDiffuse,
     ComputePipelineTypeProject1,
