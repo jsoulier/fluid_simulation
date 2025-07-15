@@ -51,7 +51,7 @@ static ReadWriteTexture textures[TextureCount];
 static int size = 128;
 static int iterations = 5;
 static float dt;
-static int delay = 500;
+static int delay = 16;
 static int cooldown;
 static uint64_t time1;
 static uint64_t time2;
@@ -64,7 +64,7 @@ static float pitch;
 static float yaw;
 static float distance = std::hypotf(size, size);
 static glm::mat4 viewProj;
-static int texture = TextureDensity;
+static int texture = TextureVelocityX;
 static bool focused;
 
 static bool Init()
@@ -282,8 +282,35 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
 static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float diffusion)
 {
     DEBUG_GROUP(device, commandBuffer);
+
+    SDL_GPUTexture* tmpTexture;
+
+    {
+        SDL_GPUTextureCreateInfo info{};
+        info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
+        info.type = SDL_GPU_TEXTURETYPE_3D;
+        info.usage = SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ |
+            SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+        info.width = size;
+        info.height = size;
+        info.layer_count_or_depth = size;
+        info.num_levels = 1;
+
+        tmpTexture = SDL_CreateGPUTexture(device, &info);
+    }
+
     for (int i = 0; i < iterations; i++)
     {
+        {
+            SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(commandBuffer);
+            SDL_GPUTextureLocation src{};
+            src.texture = texture.GetWriteTexture();
+            SDL_GPUTextureLocation dst{};
+            dst.texture = tmpTexture;
+            SDL_CopyGPUTextureToTexture(copyPass, &src, &dst, size, size, size, true);
+            SDL_EndGPUCopyPass(copyPass);
+        }
+
         SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
         if (!computePass)
         {
@@ -293,12 +320,15 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
         int groups = (size + THREADS_3D - 1) / THREADS_3D;
         BindPipeline(computePass, ComputePipelineTypeDiffuse);
         SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
+        SDL_BindGPUComputeStorageTextures(computePass, 1, &tmpTexture, 1);
         SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
         SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
         SDL_EndGPUComputePass(computePass);
         texture.Swap();
     }
+
+    SDL_ReleaseGPUTexture(device, tmpTexture);
 }
 
 static void Project1(SDL_GPUCommandBuffer* commandBuffer)
@@ -546,30 +576,23 @@ static void Update()
     UpdateViewProj();
     if (cooldown <= 0)
     {
-        /* TODO: remove */
-        static int count = 0;
-        if (count++ < 2)
-        {
-            Add1(commandBuffer, TextureVelocityX, glm::ivec3(size / 2), 1.0f);
-        }
-        /* ENDTODO: */
         Diffuse(commandBuffer, textures[TextureVelocityX], viscosity);
-        Diffuse(commandBuffer, textures[TextureVelocityY], viscosity);
-        Diffuse(commandBuffer, textures[TextureVelocityZ], viscosity);
-        Project1(commandBuffer);
-        Project2(commandBuffer);
-        Project3(commandBuffer);
-        Advect1(commandBuffer, TextureVelocityX);
-        Advect1(commandBuffer, TextureVelocityY);
-        Advect1(commandBuffer, TextureVelocityZ);
-        textures[TextureVelocityX].Swap();
-        textures[TextureVelocityY].Swap();
-        textures[TextureVelocityZ].Swap();
-        Project1(commandBuffer);
-        Project2(commandBuffer);
-        Project3(commandBuffer);
-        Diffuse(commandBuffer, textures[TextureDensity], diffusion);
-        Advect2(commandBuffer);
+        // Diffuse(commandBuffer, textures[TextureVelocityY], viscosity);
+        // Diffuse(commandBuffer, textures[TextureVelocityZ], viscosity);
+        // Project1(commandBuffer);
+        // Project2(commandBuffer);
+        // Project3(commandBuffer);
+        // Advect1(commandBuffer, TextureVelocityX);
+        // Advect1(commandBuffer, TextureVelocityY);
+        // Advect1(commandBuffer, TextureVelocityZ);
+        // textures[TextureVelocityX].Swap();
+        // textures[TextureVelocityY].Swap();
+        // textures[TextureVelocityZ].Swap();
+        // Project1(commandBuffer);
+        // Project2(commandBuffer);
+        // Project3(commandBuffer);
+        // Diffuse(commandBuffer, textures[TextureDensity], diffusion);
+        // Advect2(commandBuffer);
         cooldown = delay;
     }
     RenderOutline(commandBuffer);

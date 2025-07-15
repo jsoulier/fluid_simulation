@@ -16,7 +16,7 @@ public:
     SDL_GPUTexture** GetReadTextureAddress();
     SDL_GPUTexture** GetWriteTextureAddress();
 
-private:
+// private:
     SDL_GPUTexture* textures[2];
     int readIndex;
 };

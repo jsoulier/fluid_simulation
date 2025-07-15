@@ -56,40 +56,66 @@ struct uniformDiffusion
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
-constant spvUnsafeArray<int3, 6> _103 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
+constant spvUnsafeArray<int3, 6> _181 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
 
-kernel void main0(constant uniformDeltaTime& _48 [[buffer(0)]], constant uniformDiffusion& _54 [[buffer(1)]], texture3d<float> inImage [[texture(0)]], texture3d<float, access::write> outImage [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant uniformDeltaTime& _94 [[buffer(0)]], constant uniformDiffusion& _100 [[buffer(1)]], texture3d<float> inImage1 [[texture(0)]], texture3d<float> inImage2 [[texture(1)]], texture3d<float, access::write> outImage [[texture(2)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
+    int3 size = int3(inImage1.get_width(), inImage1.get_height(), inImage1.get_depth());
     int3 id = int3(gl_GlobalInvocationID);
-    bool _31 = any(id >= (size - int3(1)));
-    bool _40;
-    if (!_31)
+    bool _32 = id.x >= (size.x - 1);
+    bool _43;
+    if (!_32)
     {
-        _40 = any(id <= int3(0));
+        _43 = id.y >= (size.y - 1);
     }
     else
     {
-        _40 = _31;
+        _43 = _32;
     }
-    if (_40)
+    bool _54;
+    if (!_43)
     {
+        _54 = id.z >= (size.z - 1);
+    }
+    else
+    {
+        _54 = _43;
+    }
+    if (_54)
+    {
+        outImage.write(float4(0.0), uint3(id));
         return;
     }
-    float a = ((_48.deltaTime * _54.diffusion) * float(size.x - 2)) * float(size.x - 2);
+    bool _67 = id.x <= 0;
+    bool _74;
+    if (!_67)
+    {
+        _74 = id.y <= 0;
+    }
+    else
+    {
+        _74 = _67;
+    }
+    bool _81;
+    if (!_74)
+    {
+        _81 = id.z <= 0;
+    }
+    else
+    {
+        _81 = _74;
+    }
+    if (_81)
+    {
+        outImage.write(float4(0.0), uint3(id));
+        return;
+    }
+    int N = size.x;
+    float a = ((_94.deltaTime * _100.diffusion) * float(N - 2)) * float(N - 2);
     float c = 1.0 + (6.0 * a);
     do
     {
-        float value = 0.0;
-        for (int i = 0; i < 6; i++)
-        {
-            int3 neighbor = id + _103[i];
-            value += inImage.read(uint3(neighbor)).x;
-        }
-        value *= a;
-        value += inImage.read(uint3(id)).x;
-        value /= c;
-        outImage.write(float4(value), uint3(id));
+        outImage.write(float4((inImage1.read(uint3(id)).x + (a * (((((inImage2.read(uint3((id + int3(1, 0, 0)))).x + inImage2.read(uint3((id + int3(-1, 0, 0)))).x) + inImage2.read(uint3((id + int3(0, 1, 0)))).x) + inImage2.read(uint3((id + int3(0, -1, 0)))).x) + inImage2.read(uint3((id + int3(0, 0, 1)))).x) + inImage2.read(uint3((id + int3(0, 0, -1)))).x))) / c), uint3(id));
     } while (false);
 }
 
