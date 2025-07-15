@@ -203,47 +203,6 @@ static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture
     SDL_EndGPUComputePass(computePass);
 }
 
-static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
-{
-    DEBUG_GROUP(device, commandBuffer);
-    ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = width;
-    io.DisplaySize.y = height;
-    ImGui_ImplSDLGPU3_NewFrame();
-    ImGui::NewFrame();
-    ImGui::SliderInt("Delay", &delay, 0, 1000);
-    ImGui::SliderInt("Iterations", &iterations, 1, 50);
-    ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
-    ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
-    ImGui::Separator();
-    ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
-    ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
-    ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
-    ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
-    ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
-    ImGui::RadioButton("Density Texture", &texture, TextureDensity);
-    ImGui::Separator();
-    static float density;
-    static float velocity[3];
-    static int position[3];
-    if (ImGui::Button("Add Velocity"))
-    {
-        Add2(commandBuffer, TextureVelocityX, velocity[0]);
-        Add2(commandBuffer, TextureVelocityY, velocity[1]);
-        Add2(commandBuffer, TextureVelocityZ, velocity[2]);
-    }
-    ImGui::SliderFloat3("Velocity", velocity, -1.0f, 1.0f);
-    if (ImGui::Button("Add Density"))
-    {
-        Add1(commandBuffer, TextureDensity, {position[0], position[1], position[2]}, density);
-    }
-    ImGui::SliderFloat("Density", &density, 0.0f, 1.0f);
-    ImGui::SliderInt3("Position", position, 0, size - 1);
-    focused = ImGui::IsWindowFocused();
-    ImGui::Render();
-    ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
-}
-
 static bool CreateCells()
 {
     SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(device);
@@ -265,6 +224,59 @@ static bool CreateCells()
     }
     SDL_SubmitGPUCommandBuffer(commandBuffer);
     return true;
+}
+
+static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
+{
+    DEBUG_GROUP(device, commandBuffer);
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize.x = width;
+    io.DisplaySize.y = height;
+    ImGui_ImplSDLGPU3_NewFrame();
+    ImGui::NewFrame();
+    ImGui::Begin("Fluid Simulation");
+    ImGui::SliderInt("Delay", &delay, 0, 1000);
+    ImGui::SliderInt("Iterations", &iterations, 1, 50);
+    ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
+    ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 1.0f);
+    if (ImGui::SliderInt("Size", &size, 16, 128))
+    {
+        CreateCells();
+    }
+    ImGui::Separator();
+    ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
+    ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
+    ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
+    ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
+    ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
+    ImGui::RadioButton("Density Texture", &texture, TextureDensity);
+    ImGui::Separator();
+    static float density;
+    static float velocity[3];
+    static int position[3];
+    if (ImGui::Button("Add Velocity"))
+    {
+        Add2(commandBuffer, TextureVelocityX, velocity[0]);
+        Add2(commandBuffer, TextureVelocityY, velocity[1]);
+        Add2(commandBuffer, TextureVelocityZ, velocity[2]);
+    }
+    ImGui::SliderFloat3("Velocity", velocity, -1.0f, 1.0f);
+    ImGui::Separator();
+    if (ImGui::Button("Add Density"))
+    {
+        Add1(commandBuffer, TextureDensity, {position[0], position[1], position[2]}, density);
+    }
+    ImGui::SliderFloat("Density", &density, 0.0f, 1.0f);
+    ImGui::SliderInt3("Position", position, 0, size - 1);
+    ImGui::Separator();
+    if (ImGui::Button("Reset"))
+    {
+        CreateCells();
+    }
+    focused = ImGui::IsWindowFocused();
+    ImGui::End();
+    ImGui::Render();
+    ImGui_ImplSDLGPU3_PrepareDrawData(ImGui::GetDrawData(), commandBuffer);
 }
 
 static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float diffusion)
