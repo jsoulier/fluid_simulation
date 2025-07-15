@@ -11,8 +11,6 @@ const ivec3 VonNeumann[6] = ivec3[]
     ivec3( 0, 0,-1 )
 );
 
-/*
-
 #define LIN_SOLVE(id, inImage, outImage, a, c) \
     do \
     { \
@@ -26,27 +24,6 @@ const ivec3 VonNeumann[6] = ivec3[]
         value += imageLoad(inImage, id).x; \
         value /= c; \
         imageStore(outImage, id, vec4(value)); \
-    } \
-    while (false) \
-
-*/
-
-#define LIN_SOLVE(id, inImage1, inImage2, outImage, a, c) \
-    do \
-    { \
-        imageStore(outImage, id, vec4( \
-            (imageLoad(inImage1, id).x \
-                + a * \
-                ( \
-                    imageLoad(inImage2, id + ivec3( 1, 0, 0 )).x + \
-                    imageLoad(inImage2, id + ivec3(-1, 0, 0 )).x + \
-                    imageLoad(inImage2, id + ivec3( 0, 1, 0 )).x + \
-                    imageLoad(inImage2, id + ivec3( 0,-1, 0 )).x + \
-                    imageLoad(inImage2, id + ivec3( 0, 0, 1 )).x + \
-                    imageLoad(inImage2, id + ivec3( 0, 0,-1 )).x \
-                ) \
-            ) / c \
-        )); \
     } \
     while (false) \
 

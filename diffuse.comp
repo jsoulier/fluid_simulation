@@ -4,8 +4,7 @@
 #include "shader.glsl"
 
 layout(local_size_x = THREADS_3D, local_size_y = THREADS_3D, local_size_z = THREADS_3D) in;
-layout(set = 0, binding = 0, r32f) uniform readonly image3D inImage1;
-layout(set = 0, binding = 1, r32f) uniform readonly image3D inImage2;
+layout(set = 0, binding = 0, r32f) uniform readonly image3D inImage;
 layout(set = 1, binding = 0, r32f) uniform writeonly image3D outImage;
 layout(set = 2, binding = 0) uniform uniformDeltaTime
 {
@@ -19,20 +18,17 @@ layout(set = 2, binding = 1) uniform uniformDiffusion
 void main()
 {
     /* TODO: size or (size - 1)? */
-    ivec3 size = imageSize(inImage1);
+    ivec3 size = imageSize(inImage);
     ivec3 id = ivec3(gl_GlobalInvocationID);
-    if (id.x >= size.x - 1 || id.y >= size.y - 1 || id.z >= size.z - 1)
+    if (any(greaterThanEqual(id, size - 1)) || any(lessThanEqual(id, ivec3(0))))
     {
-        imageStore(outImage, id, vec4(0.0f));
-        return;
-    }
-    if (id.x <= 0 || id.y <= 0 || id.z <= 0)
-    {
-        imageStore(outImage, id, vec4(0.0f));
+        /* TODO: needed to zero out some of the borders. seems if we don't write the 
+        memory is undefined (even with we clear beforehand) */
+        /* imageStore(outImage, id, vec4(0.0f)); */
         return;
     }
     int N = size.x;
     float a = deltaTime * diffusion * (N - 2) * (N - 2);
     float c = 1 + 6 * a;
-    LIN_SOLVE(id, inImage1, inImage2, outImage, a, c);
+    LIN_SOLVE(id, inImage, outImage, a, c);
 }

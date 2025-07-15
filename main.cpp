@@ -42,6 +42,8 @@ static constexpr float Pan = 0.0002f;
 static constexpr float Fov = glm::radians(60.0f);
 static constexpr float Near = 0.1f;
 static constexpr float Far = 1000.0f;
+static constexpr float Velocity = 5.0f;
+static constexpr float Density = 5.0f;
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
@@ -251,23 +253,39 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
     ImGui::RadioButton("Density Texture", &texture, TextureDensity);
     ImGui::Separator();
-    static float density;
-    static float velocity[3];
-    static int position[3];
-    if (ImGui::Button("Add Velocity"))
+    auto add1 = [commandBuffer](Texture texture, const int position[3], float value)
     {
-        Add2(commandBuffer, TextureVelocityX, velocity[0]);
-        Add2(commandBuffer, TextureVelocityY, velocity[1]);
-        Add2(commandBuffer, TextureVelocityZ, velocity[2]);
+        Add1(commandBuffer, texture, {position[0], position[1], position[2]}, value);
+    };
+    static int center = size / 2 - 1;
+    static float allVelocity[3];
+    if (ImGui::Button("Add Velocity (All)"))
+    {
+        Add2(commandBuffer, TextureVelocityX, allVelocity[0]);
+        Add2(commandBuffer, TextureVelocityY, allVelocity[1]);
+        Add2(commandBuffer, TextureVelocityZ, allVelocity[2]);
     }
-    ImGui::SliderFloat3("Velocity", velocity, -1.0f, 1.0f);
+    ImGui::SliderFloat3("Velocity##All", allVelocity, -Velocity, Velocity);
     ImGui::Separator();
+    static float singleVelocity[3];
+    static int singleVelocityPosition[3] = {center, center, center};
+    if (ImGui::Button("Add Velocity (Single)"))
+    {
+        add1(TextureVelocityX, singleVelocityPosition, singleVelocity[0]);
+        add1(TextureVelocityY, singleVelocityPosition, singleVelocity[1]);
+        add1(TextureVelocityZ, singleVelocityPosition, singleVelocity[2]);
+    }
+    ImGui::SliderInt3("Position##Single", singleVelocityPosition, 0, size - 1);
+    ImGui::SliderFloat3("Velocity##Single", singleVelocity, -Velocity, Velocity);
+    ImGui::Separator();
+    static float density;
+    static int densityPosition[3] = {center, center, center};
     if (ImGui::Button("Add Density"))
     {
-        Add1(commandBuffer, TextureDensity, {position[0], position[1], position[2]}, density);
+        add1(TextureDensity, densityPosition, density);
     }
-    ImGui::SliderFloat("Density", &density, 0.0f, 1.0f);
-    ImGui::SliderInt3("Position", position, 0, size - 1);
+    ImGui::SliderInt3("Position", densityPosition, 0, size - 1);
+    ImGui::SliderFloat("Density", &density, 0.0f, Density);
     ImGui::Separator();
     if (ImGui::Button("Reset"))
     {
@@ -282,35 +300,8 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
 static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float diffusion)
 {
     DEBUG_GROUP(device, commandBuffer);
-
-    SDL_GPUTexture* tmpTexture;
-
-    {
-        SDL_GPUTextureCreateInfo info{};
-        info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
-        info.type = SDL_GPU_TEXTURETYPE_3D;
-        info.usage = SDL_GPU_TEXTUREUSAGE_GRAPHICS_STORAGE_READ |
-            SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
-        info.width = size;
-        info.height = size;
-        info.layer_count_or_depth = size;
-        info.num_levels = 1;
-
-        tmpTexture = SDL_CreateGPUTexture(device, &info);
-    }
-
     for (int i = 0; i < iterations; i++)
     {
-        {
-            SDL_GPUCopyPass* copyPass = SDL_BeginGPUCopyPass(commandBuffer);
-            SDL_GPUTextureLocation src{};
-            src.texture = texture.GetWriteTexture();
-            SDL_GPUTextureLocation dst{};
-            dst.texture = tmpTexture;
-            SDL_CopyGPUTextureToTexture(copyPass, &src, &dst, size, size, size, true);
-            SDL_EndGPUCopyPass(copyPass);
-        }
-
         SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
         if (!computePass)
         {
@@ -320,15 +311,12 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
         int groups = (size + THREADS_3D - 1) / THREADS_3D;
         BindPipeline(computePass, ComputePipelineTypeDiffuse);
         SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
-        SDL_BindGPUComputeStorageTextures(computePass, 1, &tmpTexture, 1);
         SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
         SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
         SDL_EndGPUComputePass(computePass);
         texture.Swap();
     }
-
-    SDL_ReleaseGPUTexture(device, tmpTexture);
 }
 
 static void Project1(SDL_GPUCommandBuffer* commandBuffer)
@@ -652,6 +640,12 @@ int main(int argc, char** argv)
                     yaw += event.motion.xrel * Pan * dt;
                     pitch -= event.motion.yrel * Pan * dt;
                     pitch = std::clamp(pitch, -limit, limit);
+                }
+                break;
+            case SDL_EVENT_KEY_DOWN:
+                if (event.key.scancode == SDL_SCANCODE_R)
+                {
+                    CreateCells();
                 }
                 break;
             case SDL_EVENT_QUIT:

@@ -29,6 +29,13 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
     attrib.format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3;
     attrib.offset = 0;
     target.format = SDL_GetGPUSwapchainTextureFormat(device, window);
+    target.blend_state.enable_blend = true;
+    target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+    target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
     SDL_GPUGraphicsPipelineCreateInfo info{};
     info.vertex_shader = voxelVertShader;
     info.fragment_shader = voxelFragShader;
@@ -41,11 +48,11 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
     info.target_info.depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
     info.target_info.has_depth_stencil_target = true;
     info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
-    info.depth_stencil_state.enable_depth_test = true;
     info.depth_stencil_state.enable_depth_write = true;
     graphicsPipelines[GraphicsPipelineTypeVoxel] = SDL_CreateGPUGraphicsPipeline(device, &info);
     info.vertex_shader = outlineVertShader;
     info.fragment_shader = outlineFragShader;
+    info.depth_stencil_state.enable_depth_test = true;
     info.primitive_type = SDL_GPU_PRIMITIVETYPE_LINELIST;
     graphicsPipelines[GraphicsPipelineTypeOutline] = SDL_CreateGPUGraphicsPipeline(device, &info);
     for (int i = GraphicsPipelineTypeCount - 1; i >= 0; i--)
