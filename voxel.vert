@@ -15,7 +15,7 @@ void main()
     uint z = gl_InstanceIndex / (size.x * size.y);
     uint y = (gl_InstanceIndex / size.x) % size.y;
     uint x = gl_InstanceIndex % size.x;
-    outValue = imageLoad(cells, ivec3(x, y, z)).x;
+    outValue = abs(imageLoad(cells, ivec3(x, y, z)).x);
     if (outValue > 0.0f)
     {
         gl_Position = viewProj * vec4(inPosition + vec3(x, y, z), 1.0f);

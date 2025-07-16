@@ -20,25 +20,17 @@ void main()
     {
         return;
     }
-    float value = 0.0f;
-    value += imageLoad(inPressure, id + ivec3(1, 0, 0)).x;
-    value -= imageLoad(inPressure, id + ivec3(-1, 0, 0)).x;
-    value *= 0.5f;
-    value *= size.x;
-    value += imageLoad(inVelocityX, id).x;
-    imageStore(outVelocityX, id, vec4(value));
-    value = 0.0f;
-    value += imageLoad(inPressure, id + ivec3(0, 1, 0)).x;
-    value -= imageLoad(inPressure, id + ivec3(0, -1, 0)).x;
-    value *= 0.5f;
-    value *= size.x;
-    value += imageLoad(inVelocityY, id).x;
-    imageStore(outVelocityY, id, vec4(value));
-    value = 0.0f;
-    value += imageLoad(inPressure, id + ivec3(0, 0, 1)).x;
-    value -= imageLoad(inPressure, id + ivec3(0, 0, -1)).x;
-    value *= 0.5f;
-    value *= size.x;
-    value += imageLoad(inVelocityZ, id).x;
-    imageStore(outVelocityZ, id, vec4(value));
+    uint N = size.x;
+    imageStore(outVelocityX, id, vec4(
+        imageLoad(inVelocityX, id).x - 0.5f * (
+            imageLoad(inPressure, id + ivec3( 1, 0, 0 )) -
+            imageLoad(inPressure, id + ivec3(-1, 0, 0 ))) / N));
+    imageStore(outVelocityY, id, vec4(
+        imageLoad(inVelocityY, id).x - 0.5f * (
+            imageLoad(inPressure, id + ivec3( 0, 1, 0 )) -
+            imageLoad(inPressure, id + ivec3( 0,-1, 0 ))) / N));
+    imageStore(outVelocityZ, id, vec4(
+        imageLoad(inVelocityZ, id).x - 0.5f * (
+            imageLoad(inPressure, id + ivec3( 0, 0, 1 )) -
+            imageLoad(inPressure, id + ivec3( 0, 0,-1 ))) / N));
 }

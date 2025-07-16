@@ -12,5 +12,5 @@ layout(set = 1, binding = 1) uniform uniformSize
 
 void main()
 {
-    gl_Position = viewProj * vec4((inPosition + vec3(0.5f)) * vec3(size), 1.0f);
+    gl_Position = viewProj * vec4((inPosition + vec3(0.5f)) * vec3(size - 1), 1.0f);
 }

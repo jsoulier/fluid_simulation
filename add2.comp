@@ -13,7 +13,8 @@ void main()
 {
     ivec3 size = imageSize(inOutImage);
     ivec3 id = ivec3(gl_GlobalInvocationID);
-    if (any(greaterThanEqual(id, size)))
+    /* NOTE: we don't write to borders here since regular dispatches don't either */
+    if (any(greaterThanEqual(id, size - 1)) || any(lessThanEqual(id, ivec3(0))))
     {
         return;
     }

@@ -1,48 +1,7 @@
-#pragma clang diagnostic ignored "-Wmissing-prototypes"
-#pragma clang diagnostic ignored "-Wmissing-braces"
-
 #include <metal_stdlib>
 #include <simd/simd.h>
 
 using namespace metal;
-
-template<typename T, size_t Num>
-struct spvUnsafeArray
-{
-    T elements[Num ? Num : 1];
-    
-    thread T& operator [] (size_t pos) thread
-    {
-        return elements[pos];
-    }
-    constexpr const thread T& operator [] (size_t pos) const thread
-    {
-        return elements[pos];
-    }
-    
-    device T& operator [] (size_t pos) device
-    {
-        return elements[pos];
-    }
-    constexpr const device T& operator [] (size_t pos) const device
-    {
-        return elements[pos];
-    }
-    
-    constexpr const constant T& operator [] (size_t pos) const constant
-    {
-        return elements[pos];
-    }
-    
-    threadgroup T& operator [] (size_t pos) threadgroup
-    {
-        return elements[pos];
-    }
-    constexpr const threadgroup T& operator [] (size_t pos) const threadgroup
-    {
-        return elements[pos];
-    }
-};
 
 struct uniformVelocity
 {
@@ -55,8 +14,6 @@ struct uniformDeltaTime
 };
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-constant spvUnsafeArray<int3, 6> _834 = spvUnsafeArray<int3, 6>({ int3(1, 0, 0), int3(-1, 0, 0), int3(0, 1, 0), int3(0, -1, 0), int3(0, 0, 1), int3(0, 0, -1) });
 
 kernel void main0(constant uniformVelocity& _46 [[buffer(0)]], constant uniformDeltaTime& _69 [[buffer(1)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float, access::write> outVelocity [[texture(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
@@ -130,8 +87,8 @@ kernel void main0(constant uniformVelocity& _46 [[buffer(0)]], constant uniformD
             int j1i = int(j1);
             int k0i = int(k0);
             int k1i = int(k1);
-            float value = (s0 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i0i, j0i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j0i, k1i))).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i0i, j1i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j1i, k1i))).x))))) + (s1 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i1i, j0i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j0i, k1i))).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i1i, j1i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j1i, k1i))).x)))));
-            outVelocity.write(float4(value), uint3(id));
+            float4 _315 = float4((s0 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i0i, j0i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j0i, k1i))).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i0i, j1i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j1i, k1i))).x))))) + (s1 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i1i, j0i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j0i, k1i))).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i1i, j1i, k0i))).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j1i, k1i))).x))))));
+            outVelocity.write(_315, uint3(id));
         } while (false);
     }
     else
@@ -190,8 +147,8 @@ kernel void main0(constant uniformVelocity& _46 [[buffer(0)]], constant uniformD
                 int j1i_1 = int(j1_1);
                 int k0i_1 = int(k0_1);
                 int k1i_1 = int(k1_1);
-                float value_1 = (s0_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k1i_1))).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k1i_1))).x))))) + (s1_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k1i_1))).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k1i_1))).x)))));
-                outVelocity.write(float4(value_1), uint3(id));
+                float4 _567 = float4((s0_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k1i_1))).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k1i_1))).x))))) + (s1_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k1i_1))).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k0i_1))).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k1i_1))).x))))));
+                outVelocity.write(_567, uint3(id));
             } while (false);
         }
         else
@@ -250,8 +207,8 @@ kernel void main0(constant uniformVelocity& _46 [[buffer(0)]], constant uniformD
                     int j1i_2 = int(j1_2);
                     int k0i_2 = int(k0_2);
                     int k1i_2 = int(k1_2);
-                    float value_2 = (s0_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k1i_2))).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k1i_2))).x))))) + (s1_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k1i_2))).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k1i_2))).x)))));
-                    outVelocity.write(float4(value_2), uint3(id));
+                    float4 _818 = float4((s0_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k1i_2))).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k1i_2))).x))))) + (s1_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k1i_2))).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k0i_2))).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k1i_2))).x))))));
+                    outVelocity.write(_818, uint3(id));
                 } while (false);
             }
         }

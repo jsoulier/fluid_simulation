@@ -26,7 +26,7 @@ struct main0_in
 vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _19 [[buffer(0)]], constant uniformSize& _32 [[buffer(1)]])
 {
     main0_out out = {};
-    out.gl_Position = _19.viewProj * float4((in.inPosition + float3(0.5)) * float3(float(_32.size)), 1.0);
+    out.gl_Position = _19.viewProj * float4((in.inPosition + float3(0.5)) * float3(float(_32.size - 1u)), 1.0);
     return out;
 }
 

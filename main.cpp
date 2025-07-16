@@ -275,7 +275,7 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
         add1(TextureVelocityY, singleVelocityPosition, singleVelocity[1]);
         add1(TextureVelocityZ, singleVelocityPosition, singleVelocity[2]);
     }
-    ImGui::SliderInt3("Position##Single", singleVelocityPosition, 0, size - 1);
+    ImGui::SliderInt3("Position##Single", singleVelocityPosition, 1, size - 2);
     ImGui::SliderFloat3("Velocity##Single", singleVelocity, -Velocity, Velocity);
     ImGui::Separator();
     static float density;
@@ -284,7 +284,7 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     {
         add1(TextureDensity, densityPosition, density);
     }
-    ImGui::SliderInt3("Position", densityPosition, 0, size - 1);
+    ImGui::SliderInt3("Position", densityPosition, 1, size - 2);
     ImGui::SliderFloat("Density", &density, 0.0f, Density);
     ImGui::Separator();
     if (ImGui::Button("Reset"))
@@ -565,11 +565,11 @@ static void Update()
     if (cooldown <= 0)
     {
         Diffuse(commandBuffer, textures[TextureVelocityX], viscosity);
-        // Diffuse(commandBuffer, textures[TextureVelocityY], viscosity);
-        // Diffuse(commandBuffer, textures[TextureVelocityZ], viscosity);
-        // Project1(commandBuffer);
-        // Project2(commandBuffer);
-        // Project3(commandBuffer);
+        Diffuse(commandBuffer, textures[TextureVelocityY], viscosity);
+        Diffuse(commandBuffer, textures[TextureVelocityZ], viscosity);
+        Project1(commandBuffer);
+        Project2(commandBuffer);
+        Project3(commandBuffer);
         // Advect1(commandBuffer, TextureVelocityX);
         // Advect1(commandBuffer, TextureVelocityY);
         // Advect1(commandBuffer, TextureVelocityZ);
@@ -588,6 +588,7 @@ static void Update()
     Letterbox(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
     SDL_SubmitGPUCommandBuffer(commandBuffer);
+    SDL_WaitForGPUIdle(device);
 }
 
 int main(int argc, char** argv)

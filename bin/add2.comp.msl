@@ -15,16 +15,26 @@ struct uniformValue
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
-kernel void main0(constant uniformValue& _45 [[buffer(0)]], texture3d<float, access::read_write> inOutImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant uniformValue& _57 [[buffer(0)]], texture3d<float, access::read_write> inOutImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
     int3 size = int3(inOutImage.get_width(), inOutImage.get_height(), inOutImage.get_depth());
     int3 id = int3(gl_GlobalInvocationID);
-    if (any(id >= size))
+    bool _31 = any(id >= (size - int3(1)));
+    bool _40;
+    if (!_31)
+    {
+        _40 = any(id <= int3(0));
+    }
+    else
+    {
+        _40 = _31;
+    }
+    if (_40)
     {
         return;
     }
     spvImageFence(inOutImage);
     float current = inOutImage.read(uint3(id)).x;
-    inOutImage.write(float4(current + _45.value), uint3(id));
+    inOutImage.write(float4(current + _57.value), uint3(id));
 }
 
