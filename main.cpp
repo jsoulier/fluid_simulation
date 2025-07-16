@@ -391,6 +391,7 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
 static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
 {
     DEBUG_GROUP(device, commandBuffer);
+    assert(texture == 0 || texture == 1 || texture == 2);
     SDL_GPUComputePass* computePass = textures[texture].BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -570,17 +571,17 @@ static void Update()
         Project1(commandBuffer);
         Project2(commandBuffer);
         Project3(commandBuffer);
-        // Advect1(commandBuffer, TextureVelocityX);
-        // Advect1(commandBuffer, TextureVelocityY);
-        // Advect1(commandBuffer, TextureVelocityZ);
-        // textures[TextureVelocityX].Swap();
-        // textures[TextureVelocityY].Swap();
-        // textures[TextureVelocityZ].Swap();
-        // Project1(commandBuffer);
-        // Project2(commandBuffer);
-        // Project3(commandBuffer);
-        // Diffuse(commandBuffer, textures[TextureDensity], diffusion);
-        // Advect2(commandBuffer);
+        Advect1(commandBuffer, TextureVelocityX);
+        Advect1(commandBuffer, TextureVelocityY);
+        Advect1(commandBuffer, TextureVelocityZ);
+        textures[TextureVelocityX].Swap();
+        textures[TextureVelocityY].Swap();
+        textures[TextureVelocityZ].Swap();
+        Project1(commandBuffer);
+        Project2(commandBuffer);
+        Project3(commandBuffer);
+        Diffuse(commandBuffer, textures[TextureDensity], diffusion);
+        Advect2(commandBuffer);
         cooldown = delay;
     }
     RenderOutline(commandBuffer);
