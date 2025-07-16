@@ -20,6 +20,10 @@ enum ComputePipelineType
     ComputePipelineTypeProject3,
     ComputePipelineTypeAdvect1,
     ComputePipelineTypeAdvect2,
+    ComputePipelineTypeSetBnd1,
+    ComputePipelineTypeSetBnd2,
+    ComputePipelineTypeSetBnd3,
+    ComputePipelineTypeSetBnd4,
     ComputePipelineTypeCount,
 };
 

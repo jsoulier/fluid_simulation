@@ -11,38 +11,39 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_DEBUG ${BINARY_DIR})
 make_directory(${BINARY_DIR})
 
 set(GLM_BUILD_LIBRARY OFF)
-add_subdirectory(SDL)
-add_subdirectory(glm)
+add_subdirectory(lib/SDL)
+add_subdirectory(lib/glm)
 add_executable(fluid_simulation WIN32
-    debug_group.cpp
-    imgui/imgui.cpp
-    imgui/imgui_demo.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_impl_sdl3.cpp
-    imgui/imgui_impl_sdlgpu3.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
-    main.cpp
-    mesh.cpp
-    pipeline.cpp
-    rw_texture.cpp
-    shader.cpp
+    lib/imgui/imgui.cpp
+    lib/imgui/imgui_demo.cpp
+    lib/imgui/imgui_draw.cpp
+    lib/imgui/imgui_impl_sdl3.cpp
+    lib/imgui/imgui_impl_sdlgpu3.cpp
+    lib/imgui/imgui_tables.cpp
+    lib/imgui/imgui_widgets.cpp
+    src/debug_group.cpp
+    src/main.cpp
+    src/mesh.cpp
+    src/pipeline.cpp
+    src/rw_texture.cpp
+    src/shader.cpp
 )
 set_target_properties(fluid_simulation PROPERTIES CXX_STANDARD 23)
-target_include_directories(fluid_simulation PRIVATE imgui)
+target_include_directories(fluid_simulation PRIVATE lib/imgui)
+target_include_directories(fluid_simulation PRIVATE lib/jsmn)
 target_link_libraries(fluid_simulation PRIVATE SDL3::SDL3 glm)
 
 function(add_shader FILE)
     set(DEPENDS ${ARGN})
-    set(GLSL ${CMAKE_SOURCE_DIR}/${FILE})
-    set(SPV ${CMAKE_SOURCE_DIR}/bin/${FILE}.spv)
-    set(DXIL ${CMAKE_SOURCE_DIR}/bin/${FILE}.dxil)
-    set(MSL ${CMAKE_SOURCE_DIR}/bin/${FILE}.msl)
-    set(JSON ${CMAKE_SOURCE_DIR}/bin/${FILE}.json)
+    set(GLSL ${CMAKE_SOURCE_DIR}/shaders/${FILE})
+    set(SPV ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.spv)
+    set(DXIL ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.dxil)
+    set(MSL ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.msl)
+    set(JSON ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.json)
     function(compile PROGRAM SOURCE OUTPUT)
         add_custom_command(
             OUTPUT ${OUTPUT}
-            COMMAND ${PROGRAM} ${SOURCE} -o ${OUTPUT}
+            COMMAND ${PROGRAM} ${SOURCE} -o ${OUTPUT} -I src
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             DEPENDS ${SOURCE} ${DEPENDS}
             COMMENT ${OUTPUT}
@@ -54,7 +55,7 @@ function(add_shader FILE)
         add_dependencies(fluid_simulation ${NAME})
     endfunction()
     if (MSVC)
-        set(SHADERCROSS SDL_shadercross/msvc/shadercross.exe)
+        set(SHADERCROSS lib/SDL_shadercross/msvc/shadercross.exe)
         compile(glslc ${GLSL} ${SPV})
         compile(${SHADERCROSS} ${SPV} ${DXIL})
         compile(${SHADERCROSS} ${SPV} ${MSL})
@@ -84,16 +85,20 @@ function(add_shader FILE)
     package(${JSON})
 endfunction()
 add_shader(add1.comp)
-add_shader(add2.comp config.hpp)
-add_shader(advect1.comp config.hpp shader.glsl)
-add_shader(advect2.comp config.hpp shader.glsl)
-add_shader(clear.comp config.hpp)
-add_shader(diffuse.comp config.hpp shader.glsl)
+add_shader(add2.comp src/config.hpp)
+add_shader(advect1.comp src/config.hpp shaders/shader.glsl)
+add_shader(advect2.comp src/config.hpp shaders/shader.glsl)
+add_shader(clear.comp src/config.hpp)
+add_shader(diffuse.comp src/config.hpp shaders/shader.glsl)
 add_shader(outline.frag)
 add_shader(outline.vert)
-add_shader(project1.comp config.hpp shader.glsl)
-add_shader(project2.comp config.hpp shader.glsl)
-add_shader(project3.comp config.hpp shader.glsl)
+add_shader(project1.comp src/config.hpp shaders/shader.glsl)
+add_shader(project2.comp src/config.hpp shaders/shader.glsl)
+add_shader(project3.comp src/config.hpp shaders/shader.glsl)
+add_shader(set_bnd1.comp src/config.hpp shaders/shader.glsl)
+add_shader(set_bnd2.comp src/config.hpp shaders/shader.glsl)
+add_shader(set_bnd3.comp src/config.hpp shaders/shader.glsl)
+add_shader(set_bnd4.comp src/config.hpp shaders/shader.glsl)
 add_shader(voxel.frag)
 add_shader(voxel.vert)
 

@@ -1,4 +1,5 @@
 #include <SDL3/SDL.h>
+#include <jsmn.h>
 
 #include <cassert>
 #include <cstdint>
@@ -9,7 +10,6 @@
 #include <string>
 #include <string_view>
 
-#include "jsmn.h"
 #include "shader.hpp"
 
 static void* Load(SDL_GPUDevice* device, const std::string_view& name)
