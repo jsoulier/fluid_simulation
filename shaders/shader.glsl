@@ -1,6 +1,7 @@
 #ifndef SHADER_GLSL
 #define SHADER_GLSL
 
+/* modified to only read from the read image */
 #define LIN_SOLVE(id, inImage, outImage, a, c) \
     do \
     { \
@@ -15,7 +16,7 @@
     } \
     while (false) \
 
-/* TODO: copied from Mike Ash. refactor */
+/* TODO: copied from Mike Ash. needs a refactor */
 #define ADVECT(id, outImage, inImage, inVelocityX, inVelocityY, inVelocityZ, deltaTime, size) \
     do \
     { \
@@ -35,6 +36,7 @@
         /* TODO: what the fuck? without N -= 2, a bunch of shit breaks */ \
         N -= 2; \
         /* TODO: shouldn't it be (N - 1) instead? is that why the previous thing is required? */ \
+        /* feel like there's some bugs in the Mike Ash version */ \
         if (x < 0.5f) \
         { \
             x = 0.5f; \
@@ -63,7 +65,7 @@
         { \
             z = N + 0.5f; \
         } \
-        /* Jaan: just a simple weighted average (i think) */ \
+        /* Jaan: distance to nearest cells (basically sampling) */ \
         float k0 = floor(z); \
         float k1 = k0 + 1.0f; \
         float s1 = x - i0; \
@@ -78,6 +80,8 @@
         int j1i = int(j1); \
         int k0i = int(k0); \
         int k1i = int(k1); \
+        /* Jaan: weighted average */ \
+        /* TODO: i feel like each dimension isn't applied equally */ \
         imageStore(outImage, id, vec4( \
             s0 * (t0 * (u0 * texelFetch(inImage, ivec3(i0i, j0i, k0i), 0).x + \
                         u1 * texelFetch(inImage, ivec3(i0i, j0i, k1i), 0).x) + \

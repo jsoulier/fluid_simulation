@@ -1,6 +1,67 @@
 #version 450
 
+#include "config.hpp"
+
+layout(local_size_x = 8, local_size_y = 1, local_size_z = 1) in;
+layout(set = 0, binding = 0) uniform sampler3D inImage;
+layout(set = 1, binding = 0, rgba32f) uniform writeonly image3D outImage;
+
 void main()
 {
-
+    ivec3 size = textureSize(inImage, 0);
+    uint id = gl_GlobalInvocationID.x;
+    uint N = size.x;
+    const ivec3 Positions[8] = ivec3[]
+    (
+        ivec3(0, 0, 0),
+        ivec3(0, N - 1, 0),
+        ivec3(0, 0, N - 1),
+        ivec3(0, N - 1, N - 1),
+        ivec3(N - 1, 0, 0),
+        ivec3(N - 1, N - 1, 0),
+        ivec3(N - 1, 0, N - 1),
+        ivec3(N - 1, N - 1, N - 1)
+    );
+    const ivec3 Neighbors1[8] = ivec3[]
+    (
+        ivec3(1, 0, 0),
+        ivec3(1, N - 1, 0),
+        ivec3(1, 0, N - 1),
+        ivec3(1, N - 1, N - 1),
+        ivec3(N - 2, 0, 0),
+        ivec3(N - 2, N - 1, 0),
+        ivec3(N - 2, 0, N - 1),
+        ivec3(N - 2, N - 1, N - 1)
+    );
+    const ivec3 Neighbors2[8] = ivec3[]
+    (
+        ivec3(0, 1, 0),
+        ivec3(0, N - 2, 0),
+        ivec3(0, 1, N - 1),
+        ivec3(0, N - 2, N - 1),
+        ivec3(N - 1, 1, 0),
+        ivec3(N - 1, N - 2, 0),
+        ivec3(N - 1, 1, N - 1),
+        ivec3(N - 1, N - 2, N - 1)
+    );
+    /* TODO: there's so many errors in their example. they use N instead of N - 2 */
+    // x[IX(0, 0, N-1)] = 0.33f * (x[IX(1, 0, N-1)]
+    //                           + x[IX(0, 1, N-1)]
+    //                           + x[IX(0, 0, N)]); /* here! */
+    const ivec3 Neighbors3[8] = ivec3[]
+    (
+        ivec3(0, 0, 1),
+        ivec3(0, N - 1, 1),
+        ivec3(0, 0, N - 2),
+        ivec3(0, N - 1, N - 2),
+        ivec3(N - 1, 0, 1),
+        ivec3(N - 1, N - 1, 1),
+        ivec3(N - 1, 0, N - 2),
+        ivec3(N - 1, N - 1, N - 2)
+    );
+    imageStore(outImage, Positions[id],
+        vec4(0.33f * (
+            texelFetch(inImage, Neighbors1[id], 0).x +
+            texelFetch(inImage, Neighbors2[id], 0).x +
+            texelFetch(inImage, Neighbors3[id], 0).x)));
 }

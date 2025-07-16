@@ -76,6 +76,7 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
     computePipelines[ComputePipelineTypeSetBnd2] = LoadComputePipeline(device, "set_bnd2.comp");
     computePipelines[ComputePipelineTypeSetBnd3] = LoadComputePipeline(device, "set_bnd3.comp");
     computePipelines[ComputePipelineTypeSetBnd4] = LoadComputePipeline(device, "set_bnd4.comp");
+    computePipelines[ComputePipelineTypeSetBnd5] = LoadComputePipeline(device, "set_bnd5.comp");
     for (int i = ComputePipelineTypeCount - 1; i >= 0; i--)
     {
         if (!computePipelines[i])

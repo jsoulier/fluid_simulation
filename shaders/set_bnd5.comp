@@ -1,19 +1,10 @@
 #version 450
 
 #include "config.hpp"
-#include "shader.glsl"
 
 layout(local_size_x = THREADS_3D, local_size_y = THREADS_3D, local_size_z = THREADS_3D) in;
 layout(set = 0, binding = 0) uniform sampler3D inImage;
 layout(set = 1, binding = 0, rgba32f) uniform writeonly image3D outImage;
-layout(set = 2, binding = 0) uniform uniformDeltaTime
-{
-    float deltaTime;
-};
-layout(set = 2, binding = 1) uniform uniformDiffusion
-{
-    float diffusion;
-};
 
 void main()
 {
@@ -23,8 +14,6 @@ void main()
     {
         return;
     }
-    int N = size.x;
-    float a = deltaTime * diffusion * (N - 2) * (N - 2);
-    float c = 1 + 6 * a;
-    LIN_SOLVE(id, inImage, outImage, a, c);
+    float current = texelFetch(inImage, id, 0).x;
+    imageStore(outImage, id, vec4(current));
 }

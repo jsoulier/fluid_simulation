@@ -3,7 +3,42 @@
 
 using namespace metal;
 
-kernel void main0()
+struct uniformType
 {
+    uint type;
+};
+
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u, 1u, 8u);
+
+kernel void main0(constant uniformType& _87 [[buffer(0)]], texture3d<float> inImage [[texture(0)]], texture3d<float, access::write> outImage [[texture(1)]], sampler inImageSmplr [[sampler(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    int3 size = int3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
+    int3 id = int3(gl_GlobalInvocationID);
+    if (any(id >= size))
+    {
+        return;
+    }
+    uint N = uint(size.x);
+    float value;
+    if (id.y == 1)
+    {
+        id.y = int(N - 1u);
+        value = inImage.read(uint3(int3(id.x, int(N - 2u), id.z)), 0).x;
+    }
+    else
+    {
+        id.y = 0;
+        value = inImage.read(uint3(int3(id.x, 1, id.z)), 0).x;
+    }
+    float _92;
+    if (_87.type == 2u)
+    {
+        _92 = -value;
+    }
+    else
+    {
+        _92 = value;
+    }
+    outImage.write(float4(_92), uint3(id));
 }
 
