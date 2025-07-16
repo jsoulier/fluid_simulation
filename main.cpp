@@ -49,6 +49,7 @@ static SDL_Window* window;
 static SDL_GPUDevice* device;
 static SDL_GPUTexture* colorTexture;
 static SDL_GPUTexture* depthTexture;
+static SDL_GPUSampler* sampler;
 static ReadWriteTexture textures[TextureCount];
 static int size = 128;
 static int iterations = 5;
@@ -85,7 +86,12 @@ static bool Init()
         return false;
     }
 #if defined(SDL_PLATFORM_WIN32)
+/* NOTE: forcing Vulkan when debugging on Windows since debug groups are broken on D3D12 */
+#ifndef NDEBUG
+    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, nullptr);
+#else
     device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL, true, nullptr);
+#endif
 #elif defined(SDL_PLATFORM_APPLE)
     device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_MSL, true, nullptr);
 #else
@@ -138,6 +144,19 @@ static bool CreateTextures()
         return false;
     }
     SDL_DestroyProperties(info.props);
+    return true;
+}
+
+static bool CreateSamplers()
+{
+    /* NOTE: dummy sampler for texelFetch (readonly storage textures are broken on Vulkan) */
+    SDL_GPUSamplerCreateInfo info{};
+    sampler = SDL_CreateGPUSampler(device, &info);
+    if (!sampler)
+    {
+        SDL_Log("Failed to create sampler: %s", SDL_GetError());
+        return false;
+    }
     return true;
 }
 
@@ -309,9 +328,12 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
             SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
             return;
         }
+        SDL_GPUTextureSamplerBinding textureBindings{};
+        textureBindings.sampler = sampler;
+        textureBindings.texture = texture.GetReadTexture();
         int groups = (size + THREADS_3D - 1) / THREADS_3D;
         BindPipeline(computePass, ComputePipelineTypeDiffuse);
-        SDL_BindGPUComputeStorageTextures(computePass, 0, texture.GetReadTextureAddress(), 1);
+        SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
         SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
         SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -332,11 +354,16 @@ static void Project1(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
+    SDL_GPUTextureSamplerBinding textureBindings[3]{};
+    textureBindings[0].sampler = sampler;
+    textureBindings[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[1].sampler = sampler;
+    textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[2].sampler = sampler;
+    textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
     int groups = (size + THREADS_3D - 1) / THREADS_3D;
     BindPipeline(computePass, ComputePipelineTypeProject1);
-    SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureVelocityX].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityY].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 3);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
     textures[TexturePressure].Swap();
@@ -354,9 +381,12 @@ static void Project2(SDL_GPUCommandBuffer* commandBuffer)
             SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
             return;
         }
+        SDL_GPUTextureSamplerBinding textureBinding{};
+        textureBinding.sampler = sampler;
+        textureBinding.texture = textures[TextureDivergence].GetReadTexture();
         int groups = (size + THREADS_3D - 1) / THREADS_3D;
         BindPipeline(computePass, ComputePipelineTypeProject2);
-        SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureDivergence].GetReadTextureAddress(), 1);
+        SDL_BindGPUComputeSamplers(computePass, 0, &textureBinding, 1);
         SDL_DispatchGPUCompute(computePass, groups, groups, groups);
         SDL_EndGPUComputePass(computePass);
         textures[TexturePressure].Swap();
@@ -376,12 +406,18 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
+    SDL_GPUTextureSamplerBinding textureBindings[4]{};
+    textureBindings[0].sampler = sampler;
+    textureBindings[0].texture = textures[TexturePressure].GetReadTexture();
+    textureBindings[1].sampler = sampler;
+    textureBindings[1].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[2].sampler = sampler;
+    textureBindings[2].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[3].sampler = sampler;
+    textureBindings[3].texture = textures[TextureVelocityZ].GetReadTexture();
     int groups = (size + THREADS_3D - 1) / THREADS_3D;
     BindPipeline(computePass, ComputePipelineTypeProject3);
-    SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TexturePressure].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityX].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityY].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 3, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
     textures[TextureVelocityX].Swap();
@@ -399,11 +435,16 @@ static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
+    SDL_GPUTextureSamplerBinding textureBindings[3]{};
+    textureBindings[0].sampler = sampler;
+    textureBindings[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[1].sampler = sampler;
+    textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[2].sampler = sampler;
+    textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
     int groups = (size + THREADS_3D - 1) / THREADS_3D;
     BindPipeline(computePass, ComputePipelineTypeAdvect1);
-    SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureVelocityX].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityY].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 3);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &texture, sizeof(texture));
     SDL_PushGPUComputeUniformData(commandBuffer, 1, &dt, sizeof(dt));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -419,12 +460,18 @@ static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
+    SDL_GPUTextureSamplerBinding textureBindings[4]{};
+    textureBindings[0].sampler = sampler;
+    textureBindings[0].texture = textures[TextureDensity].GetReadTexture();
+    textureBindings[1].sampler = sampler;
+    textureBindings[1].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[2].sampler = sampler;
+    textureBindings[2].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[3].sampler = sampler;
+    textureBindings[3].texture = textures[TextureVelocityZ].GetReadTexture();
     int groups = (size + THREADS_3D - 1) / THREADS_3D;
     BindPipeline(computePass, ComputePipelineTypeAdvect2);
-    SDL_BindGPUComputeStorageTextures(computePass, 0, textures[TextureDensity].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 1, textures[TextureVelocityX].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 2, textures[TextureVelocityY].GetReadTextureAddress(), 1);
-    SDL_BindGPUComputeStorageTextures(computePass, 3, textures[TextureVelocityZ].GetReadTextureAddress(), 1);
+    SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
@@ -476,8 +523,11 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
+    SDL_GPUTextureSamplerBinding textureBinding{};
+    textureBinding.sampler = sampler;
+    textureBinding.texture = textures[texture].GetReadTexture();
     BindPipeline(renderPass, GraphicsPipelineTypeVoxel);
-    SDL_BindGPUVertexStorageTextures(renderPass, 0, textures[texture].GetReadTextureAddress(), 1);
+    SDL_BindGPUVertexSamplers(renderPass, 0, &textureBinding, 1);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
     RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
     SDL_EndGPURenderPass(renderPass);
@@ -615,6 +665,11 @@ int main(int argc, char** argv)
         SDL_Log("Failed to create textures");
         return 1;
     }
+    if (!CreateSamplers())
+    {
+        SDL_Log("Failed to create samplers");
+        return 1;
+    }
     if (!CreateCells())
     {
         SDL_Log("Failed to create cells");
@@ -669,6 +724,7 @@ int main(int argc, char** argv)
     }
     SDL_ReleaseGPUTexture(device, colorTexture);
     SDL_ReleaseGPUTexture(device, depthTexture);
+    SDL_ReleaseGPUSampler(device, sampler);
     FreeMeshes(device);
     FreePipelines(device);
     ImGui_ImplSDLGPU3_Shutdown();

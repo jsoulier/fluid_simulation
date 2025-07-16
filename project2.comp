@@ -4,12 +4,12 @@
 #include "shader.glsl"
 
 layout(local_size_x = THREADS_3D, local_size_y = THREADS_3D, local_size_z = THREADS_3D) in;
-layout(set = 0, binding = 0, r32f) uniform readonly image3D inDivergence;
-layout(set = 1, binding = 0, r32f) uniform writeonly image3D outPressure;
+layout(set = 0, binding = 0) uniform sampler3D inDivergence;
+layout(set = 1, binding = 0, rgba32f) uniform writeonly image3D outPressure;
 
 void main()
 {
-    ivec3 size = imageSize(inDivergence);
+    ivec3 size = textureSize(inDivergence, 0);
     ivec3 id = ivec3(gl_GlobalInvocationID);
     if (any(greaterThanEqual(id, size - 1)) || any(lessThanEqual(id, ivec3(0))))
     {

@@ -2,7 +2,7 @@
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 0) out float outValue;
-layout(set = 0, binding = 0, r32f) uniform readonly image3D cells;
+layout(set = 0, binding = 0) uniform sampler3D cells;
 layout(set = 1, binding = 0) uniform uniformViewProj
 {
     mat4 viewProj;
@@ -11,11 +11,11 @@ layout(set = 1, binding = 0) uniform uniformViewProj
 void main()
 {
     /* TODO: gl_InstanceIndex or gl_InstanceID? */
-    ivec3 size = imageSize(cells);
+    ivec3 size = textureSize(cells, 0);
     uint z = gl_InstanceIndex / (size.x * size.y);
     uint y = (gl_InstanceIndex / size.x) % size.y;
     uint x = gl_InstanceIndex % size.x;
-    outValue = abs(imageLoad(cells, ivec3(x, y, z)).x);
+    outValue = abs(texelFetch(cells, ivec3(x, y, z), 0).x);
     if (outValue > 0.0f)
     {
         gl_Position = viewProj * vec4(inPosition + vec3(x, y, z), 1.0f);

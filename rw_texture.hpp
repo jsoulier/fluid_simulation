@@ -13,8 +13,6 @@ public:
     void Swap();
     SDL_GPUTexture* GetReadTexture();
     SDL_GPUTexture* GetWriteTexture();
-    SDL_GPUTexture** GetReadTextureAddress();
-    SDL_GPUTexture** GetWriteTextureAddress();
 
 // private:
     SDL_GPUTexture* textures[2];

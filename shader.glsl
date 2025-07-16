@@ -5,13 +5,13 @@
     do \
     { \
         imageStore(outImage, id, vec4( \
-            (imageLoad(inImage, id).x + \
-                a * (imageLoad(inImage, id + ivec3( 1, 0, 0 )).x + \
-                     imageLoad(inImage, id + ivec3(-1, 0, 0 )).x + \
-                     imageLoad(inImage, id + ivec3( 0, 1, 0 )).x + \
-                     imageLoad(inImage, id + ivec3( 0,-1, 0 )).x + \
-                     imageLoad(inImage, id + ivec3( 0, 0, 1 )).x + \
-                     imageLoad(inImage, id + ivec3( 0, 0,-1 )).x)) / c)); \
+            (texelFetch(inImage, id, 0).x + \
+                a * (texelFetch(inImage, id + ivec3( 1, 0, 0 ), 0).x + \
+                     texelFetch(inImage, id + ivec3(-1, 0, 0 ), 0).x + \
+                     texelFetch(inImage, id + ivec3( 0, 1, 0 ), 0).x + \
+                     texelFetch(inImage, id + ivec3( 0,-1, 0 ), 0).x + \
+                     texelFetch(inImage, id + ivec3( 0, 0, 1 ), 0).x + \
+                     texelFetch(inImage, id + ivec3( 0, 0,-1 ), 0).x)) / c)); \
     } \
     while (false) \
 
@@ -25,9 +25,9 @@
         float dty = deltaTime * (N - 2); \
         float dtz = deltaTime * (N - 2); \
         /* Jaan: position delta for the current velocity */ \
-        float tmp1 = dtx * imageLoad(inVelocityX, id).x; \
-        float tmp2 = dty * imageLoad(inVelocityY, id).x; \
-        float tmp3 = dtz * imageLoad(inVelocityZ, id).x; \
+        float tmp1 = dtx * texelFetch(inVelocityX, id, 0).x; \
+        float tmp2 = dty * texelFetch(inVelocityY, id, 0).x; \
+        float tmp3 = dtz * texelFetch(inVelocityZ, id, 0).x; \
         /* Jaan: previous position according to current position and velocity */ \
         float x = id.x - tmp1; \
         float y = id.y - tmp2; \
@@ -79,14 +79,14 @@
         int k0i = int(k0); \
         int k1i = int(k1); \
         imageStore(outImage, id, vec4( \
-            s0 * (t0 * (u0 * imageLoad(inImage, ivec3(i0i, j0i, k0i)).x + \
-                        u1 * imageLoad(inImage, ivec3(i0i, j0i, k1i)).x) + \
-                 (t1 * (u0 * imageLoad(inImage, ivec3(i0i, j1i, k0i)).x + \
-                        u1 * imageLoad(inImage, ivec3(i0i, j1i, k1i)).x))) + \
-            s1 * (t0 * (u0 * imageLoad(inImage, ivec3(i1i, j0i, k0i)).x + \
-                        u1 * imageLoad(inImage, ivec3(i1i, j0i, k1i)).x) + \
-                 (t1 * (u0 * imageLoad(inImage, ivec3(i1i, j1i, k0i)).x + \
-                        u1 * imageLoad(inImage, ivec3(i1i, j1i, k1i)).x))))); \
+            s0 * (t0 * (u0 * texelFetch(inImage, ivec3(i0i, j0i, k0i), 0).x + \
+                        u1 * texelFetch(inImage, ivec3(i0i, j0i, k1i), 0).x) + \
+                 (t1 * (u0 * texelFetch(inImage, ivec3(i0i, j1i, k0i), 0).x + \
+                        u1 * texelFetch(inImage, ivec3(i0i, j1i, k1i), 0).x))) + \
+            s1 * (t0 * (u0 * texelFetch(inImage, ivec3(i1i, j0i, k0i), 0).x + \
+                        u1 * texelFetch(inImage, ivec3(i1i, j0i, k1i), 0).x) + \
+                 (t1 * (u0 * texelFetch(inImage, ivec3(i1i, j1i, k0i), 0).x + \
+                        u1 * texelFetch(inImage, ivec3(i1i, j1i, k1i), 0).x))))); \
     } \
     while (false) \
 

@@ -4,15 +4,15 @@
 #include "shader.glsl"
 
 layout(local_size_x = THREADS_3D, local_size_y = THREADS_3D, local_size_z = THREADS_3D) in;
-layout(set = 0, binding = 0, r32f) uniform readonly image3D inVelocityX;
-layout(set = 0, binding = 1, r32f) uniform readonly image3D inVelocityY;
-layout(set = 0, binding = 2, r32f) uniform readonly image3D inVelocityZ;
-layout(set = 1, binding = 0, r32f) uniform writeonly image3D outPressure;
-layout(set = 1, binding = 1, r32f) uniform writeonly image3D outDivergence;
+layout(set = 0, binding = 0) uniform sampler3D inVelocityX;
+layout(set = 0, binding = 1) uniform sampler3D inVelocityY;
+layout(set = 0, binding = 2) uniform sampler3D inVelocityZ;
+layout(set = 1, binding = 0, rgba32f) uniform writeonly image3D outPressure;
+layout(set = 1, binding = 1, rgba32f) uniform writeonly image3D outDivergence;
 
 void main()
 {
-    ivec3 size = imageSize(inVelocityX);
+    ivec3 size = textureSize(inVelocityX, 0);
     ivec3 id = ivec3(gl_GlobalInvocationID);
     if (any(greaterThanEqual(id, size - 1)) || any(lessThanEqual(id, ivec3(0))))
     {
@@ -20,11 +20,11 @@ void main()
     }
     uint N = size.x;
     imageStore(outDivergence, id, vec4(
-        -0.5f * (imageLoad(inVelocityX, id + ivec3( 1, 0, 0 )).x -
-                 imageLoad(inVelocityX, id + ivec3(-1, 0, 0 )).x +
-                 imageLoad(inVelocityX, id + ivec3( 0, 1, 0 )).x -
-                 imageLoad(inVelocityX, id + ivec3( 0,-1, 0 )).x +
-                 imageLoad(inVelocityX, id + ivec3( 0, 0, 1 )).x -
-                 imageLoad(inVelocityX, id + ivec3( 0, 0,-1 )).x) / N));
+        -0.5f * (texelFetch(inVelocityX, id + ivec3( 1, 0, 0 ), 0).x -
+                 texelFetch(inVelocityX, id + ivec3(-1, 0, 0 ), 0).x +
+                 texelFetch(inVelocityX, id + ivec3( 0, 1, 0 ), 0).x -
+                 texelFetch(inVelocityX, id + ivec3( 0,-1, 0 ), 0).x +
+                 texelFetch(inVelocityX, id + ivec3( 0, 0, 1 ), 0).x -
+                 texelFetch(inVelocityX, id + ivec3( 0, 0,-1 ), 0).x) / N));
     imageStore(outPressure, id, vec4(0.0f));
 }
