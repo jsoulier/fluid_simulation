@@ -42,8 +42,8 @@ static constexpr float Pan = 0.0002f;
 static constexpr float Fov = glm::radians(60.0f);
 static constexpr float Near = 0.1f;
 static constexpr float Far = 1000.0f;
-static constexpr float Velocity = 5.0f;
-static constexpr float Density = 5.0f;
+static constexpr float Velocity = 0.0001f;
+static constexpr float Density = 100.0f;
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
@@ -265,7 +265,8 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
         Add2(commandBuffer, TextureVelocityY, allVelocity[1]);
         Add2(commandBuffer, TextureVelocityZ, allVelocity[2]);
     }
-    ImGui::SliderFloat3("Velocity##All", allVelocity, -Velocity, Velocity);
+    /* TODO: needing 8 decimals of precision seems... broken as shit */
+    ImGui::SliderFloat3("Velocity##All", allVelocity, -Velocity, Velocity, "%.8f");
     ImGui::Separator();
     static float singleVelocity[3];
     static int singleVelocityPosition[3] = {center, center, center};
@@ -276,7 +277,7 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
         add1(TextureVelocityZ, singleVelocityPosition, singleVelocity[2]);
     }
     ImGui::SliderInt3("Position##Single", singleVelocityPosition, 1, size - 2);
-    ImGui::SliderFloat3("Velocity##Single", singleVelocity, -Velocity, Velocity);
+    ImGui::SliderFloat3("Velocity##Single", singleVelocity, -Velocity, Velocity, "%.8f");
     ImGui::Separator();
     static float density;
     static int densityPosition[3] = {center, center, center};

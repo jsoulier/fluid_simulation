@@ -20,13 +20,21 @@
     do \
     { \
         float N = size.x; \
-        vec3 dt = deltaTime * (size - 2); \
-        float tmp1 = dt.x * imageLoad(inVelocityX, id).x; \
-        float tmp2 = dt.y * imageLoad(inVelocityY, id).x; \
-        float tmp3 = dt.z * imageLoad(inVelocityZ, id).x; \
+        /* Jaan: scale for the velocity */ \
+        float dtx = deltaTime * (N - 2); \
+        float dty = deltaTime * (N - 2); \
+        float dtz = deltaTime * (N - 2); \
+        /* Jaan: position delta for the current velocity */ \
+        float tmp1 = dtx * imageLoad(inVelocityX, id).x; \
+        float tmp2 = dty * imageLoad(inVelocityY, id).x; \
+        float tmp3 = dtz * imageLoad(inVelocityZ, id).x; \
+        /* Jaan: previous position according to current position and velocity */ \
         float x = id.x - tmp1; \
         float y = id.y - tmp2; \
         float z = id.z - tmp3; \
+        /* TODO: what the fuck? without N -= 2, a bunch of shit breaks */ \
+        N -= 2; \
+        /* TODO: shouldn't it be (N - 1) instead? is that why the previous thing is required? */ \
         if (x < 0.5f) \
         { \
             x = 0.5f; \
@@ -55,6 +63,7 @@
         { \
             z = N + 0.5f; \
         } \
+        /* Jaan: just a simple weighted average (i think) */ \
         float k0 = floor(z); \
         float k1 = k0 + 1.0f; \
         float s1 = x - i0; \

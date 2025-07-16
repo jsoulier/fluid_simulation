@@ -10,7 +10,7 @@ struct uniformDeltaTime
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
 
-kernel void main0(constant uniformDeltaTime& _60 [[buffer(0)]], texture3d<float> inDensity [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outDensity [[texture(4)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant uniformDeltaTime& _58 [[buffer(0)]], texture3d<float> inDensity [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outDensity [[texture(4)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
     int3 size = int3(inDensity.get_width(), inDensity.get_height(), inDensity.get_depth());
     int3 id = int3(gl_GlobalInvocationID);
@@ -31,13 +31,16 @@ kernel void main0(constant uniformDeltaTime& _60 [[buffer(0)]], texture3d<float>
     do
     {
         float N = float(size.x);
-        float3 dt = float3(size - int3(2)) * _60.deltaTime;
-        float tmp1 = dt.x * inVelocityX.read(uint3(id)).x;
-        float tmp2 = dt.y * inVelocityY.read(uint3(id)).x;
-        float tmp3 = dt.z * inVelocityZ.read(uint3(id)).x;
+        float dtx = _58.deltaTime * (N - 2.0);
+        float dty = _58.deltaTime * (N - 2.0);
+        float dtz = _58.deltaTime * (N - 2.0);
+        float tmp1 = dtx * inVelocityX.read(uint3(id)).x;
+        float tmp2 = dty * inVelocityY.read(uint3(id)).x;
+        float tmp3 = dtz * inVelocityZ.read(uint3(id)).x;
         float x = float(id.x) - tmp1;
         float y = float(id.y) - tmp2;
         float z = float(id.z) - tmp3;
+        N -= 2.0;
         if (x < 0.5)
         {
             x = 0.5;
@@ -80,8 +83,8 @@ kernel void main0(constant uniformDeltaTime& _60 [[buffer(0)]], texture3d<float>
         int j1i = int(j1);
         int k0i = int(k0);
         int k1i = int(k1);
-        float4 _307 = float4((s0 * ((t0 * ((u0 * inDensity.read(uint3(int3(i0i, j0i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i0i, j0i, k1i))).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i0i, j1i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i0i, j1i, k1i))).x))))) + (s1 * ((t0 * ((u0 * inDensity.read(uint3(int3(i1i, j0i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i1i, j0i, k1i))).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i1i, j1i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i1i, j1i, k1i))).x))))));
-        outDensity.write(_307, uint3(id));
+        float4 _314 = float4((s0 * ((t0 * ((u0 * inDensity.read(uint3(int3(i0i, j0i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i0i, j0i, k1i))).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i0i, j1i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i0i, j1i, k1i))).x))))) + (s1 * ((t0 * ((u0 * inDensity.read(uint3(int3(i1i, j0i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i1i, j0i, k1i))).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i1i, j1i, k0i))).x) + (u1 * inDensity.read(uint3(int3(i1i, j1i, k1i))).x))))));
+        outDensity.write(_314, uint3(id));
     } while (false);
 }
 
