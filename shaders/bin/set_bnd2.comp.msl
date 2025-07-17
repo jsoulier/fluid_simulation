@@ -30,15 +30,6 @@ kernel void main0(constant uniformType& _87 [[buffer(0)]], texture3d<float> inIm
         id.y = 0;
         value = inImage.read(uint3(int3(id.x, 1, id.z)), 0).x;
     }
-    float _92;
-    if (_87.type == 2u)
-    {
-        _92 = -value;
-    }
-    else
-    {
-        _92 = value;
-    }
-    outImage.write(float4(_92), uint3(id));
+    outImage.write(float4((_87.type == 2u) ? value : value), uint3(id));
 }
 

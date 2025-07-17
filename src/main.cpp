@@ -7,11 +7,14 @@
 #include <imgui_impl_sdl3.h>
 #include <imgui_impl_sdlgpu3.h>
 
-#include <cassert>
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <format>
+#include <string>
+#include <vector>
 
 #include "config.hpp"
 #include "debug_group.hpp"
@@ -31,6 +34,13 @@ enum Texture
     TextureCount,
 };
 
+struct Spawner
+{
+    Texture texture;
+    int position[3];
+    float value;
+};
+
 static_assert(TextureVelocityX == 0);
 static_assert(TextureVelocityY == 1);
 static_assert(TextureVelocityZ == 2);
@@ -42,8 +52,6 @@ static constexpr float Pan = 0.0002f;
 static constexpr float Fov = glm::radians(60.0f);
 static constexpr float Near = 0.1f;
 static constexpr float Far = 1000.0f;
-static constexpr float Velocity = 0.0001f;
-static constexpr float Density = 100.0f;
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
@@ -67,8 +75,9 @@ static float pitch;
 static float yaw;
 static float distance = std::hypotf(size, size);
 static glm::mat4 viewProj;
-static int texture = TextureVelocityX;
+static int texture = TextureCount;
 static bool focused;
+std::vector<Spawner> spawners;
 
 static bool Init()
 {
@@ -249,6 +258,23 @@ static bool CreateCells()
 
 static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
 {
+    static constexpr const char* Textures[] =
+    {
+        "Velocity (X)",
+        "Velocity (Y)",
+        "Velocity (Z)",
+        "Pressure",
+        "Divergence",
+        "Density",
+        "All",
+    };
+    static constexpr Texture Spawners[] =
+    {
+        TextureVelocityX,
+        TextureVelocityY,
+        TextureVelocityZ,
+        TextureDensity
+    };
     DEBUG_GROUP(device, commandBuffer);
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize.x = width;
@@ -256,6 +282,7 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     ImGui_ImplSDLGPU3_NewFrame();
     ImGui::NewFrame();
     ImGui::Begin("Fluid Simulation");
+    ImGui::SeparatorText("Settings");
     ImGui::SliderInt("Delay", &delay, 0, 1000);
     ImGui::SliderInt("Iterations", &iterations, 1, 50);
     ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 1.0f);
@@ -264,52 +291,66 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     {
         CreateCells();
     }
-    ImGui::Separator();
-    ImGui::RadioButton("Velocity Texture (X)", &texture, TextureVelocityX);
-    ImGui::RadioButton("Velocity Texture (Y)", &texture, TextureVelocityY);
-    ImGui::RadioButton("Velocity Texture (Z)", &texture, TextureVelocityZ);
-    ImGui::RadioButton("Pressure Texture", &texture, TexturePressure);
-    ImGui::RadioButton("Divergence Texture", &texture, TextureDivergence);
-    ImGui::RadioButton("Density Texture", &texture, TextureDensity);
-    ImGui::Separator();
-    auto add1 = [commandBuffer](Texture texture, const int position[3], float value)
+    ImGui::SeparatorText("Viewer");
+    for (int i = 0; i < SDL_arraysize(Textures); i++)
     {
-        Add1(commandBuffer, texture, {position[0], position[1], position[2]}, value);
-    };
-    static int center = size / 2 - 1;
-    static float allVelocity[3];
-    if (ImGui::Button("Add Velocity (All)"))
-    {
-        Add2(commandBuffer, TextureVelocityX, allVelocity[0]);
-        Add2(commandBuffer, TextureVelocityY, allVelocity[1]);
-        Add2(commandBuffer, TextureVelocityZ, allVelocity[2]);
+        ImGui::RadioButton(Textures[i], &texture, i);
     }
-    /* TODO: needing 8 digits of precision seems broken as shit. maybe because dt is not floating? */
-    ImGui::SliderFloat3("Velocity##All", allVelocity, -Velocity, Velocity, "%.8f");
-    ImGui::Separator();
-    static float singleVelocity[3];
-    static int singleVelocityPosition[3] = {center, center, center};
-    if (ImGui::Button("Add Velocity (Single)"))
+    ImGui::SeparatorText("Spawners");
+    if (ImGui::Button("Add##Spawner"))
     {
-        add1(TextureVelocityX, singleVelocityPosition, singleVelocity[0]);
-        add1(TextureVelocityY, singleVelocityPosition, singleVelocity[1]);
-        add1(TextureVelocityZ, singleVelocityPosition, singleVelocity[2]);
+        Spawner spawner{};
+        spawner.texture = TextureDensity;
+        spawner.value = 1.0f;
+        int center = size / 2 - 1;
+        spawner.position[0] = center;
+        spawner.position[1] = center;
+        spawner.position[2] = center;
+        spawners.push_back(spawner);
     }
-    ImGui::SliderInt3("Position##Single", singleVelocityPosition, 1, size - 2);
-    ImGui::SliderFloat3("Velocity##Single", singleVelocity, -Velocity, Velocity, "%.8f");
-    ImGui::Separator();
-    static float density;
-    static int densityPosition[3] = {center, center, center};
-    if (ImGui::Button("Add Density"))
+    std::vector<int> removes;
+    for (int i = 0; i < spawners.size(); i++)
     {
-        add1(TextureDensity, densityPosition, density);
+        std::string removeId = std::format("Remove##remove{}", i);
+        std::string positionId = std::format("##position{}", i);
+        std::string valueId = std::format("##value{}", i);
+        std::string textureId = std::format("##texture{}", i);
+        Spawner& spawner = spawners[i];
+        ImGui::Separator();
+        ImGui::SliderInt3(positionId.data(), spawner.position, 1, size - 2);
+        ImGui::DragFloat(valueId.data(), &spawner.value, 1.0f);
+        if (ImGui::BeginCombo(textureId.data(), Textures[spawner.texture]))
+        {
+            for (int j = 0; j < SDL_arraysize(Spawners); j++)
+            {
+                bool isSelected = spawner.texture == j;
+                if (ImGui::Selectable(Textures[Spawners[j]], isSelected))
+                {
+                    spawner.texture = Spawners[j];
+                }
+                if (isSelected)
+                {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (ImGui::Button(removeId.data()))
+        {
+            removes.push_back(i);
+        }
+        const int x = spawner.position[0];
+        const int y = spawner.position[1];
+        const int z = spawner.position[2];
+        Add1(commandBuffer, spawner.texture, {x, y, z}, spawner.value);
     }
-    ImGui::SliderInt3("Position", densityPosition, 1, size - 2);
-    ImGui::SliderFloat("Density", &density, 0.0f, Density);
-    ImGui::Separator();
-    if (ImGui::Button("Reset"))
+    if (spawners.size())
     {
-        CreateCells();
+        ImGui::Separator();
+    }
+    for (auto it = removes.rbegin(); it != removes.rend(); it++)
+    {
+        spawners.erase(spawners.begin() + *it);
     }
     focused = ImGui::IsWindowFocused();
     ImGui::End();
@@ -474,40 +515,111 @@ static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
 
 static void SetBnd1(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    /* groups, groups, 2 */
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_GPUTextureSamplerBinding textureBindings{};
+    textureBindings.sampler = sampler;
+    textureBindings.texture = texture.GetReadTexture();
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeSetBnd1);
+    SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
+    SDL_DispatchGPUCompute(computePass, groups, groups, 2);
+    SDL_EndGPUComputePass(computePass);
 }
 
 static void SetBnd2(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    /* groups, 2, groups */
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_GPUTextureSamplerBinding textureBindings{};
+    textureBindings.sampler = sampler;
+    textureBindings.texture = texture.GetReadTexture();
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeSetBnd2);
+    SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
+    SDL_DispatchGPUCompute(computePass, groups, 2, groups);
+    SDL_EndGPUComputePass(computePass);
 }
 
 static void SetBnd3(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    /* 2, groups, groups */
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_GPUTextureSamplerBinding textureBindings{};
+    textureBindings.sampler = sampler;
+    textureBindings.texture = texture.GetReadTexture();
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeSetBnd3);
+    SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
+    SDL_DispatchGPUCompute(computePass, 2, groups, groups);
+    SDL_EndGPUComputePass(computePass);
 }
 
-static void SetBnd4(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
+static void SetBnd4(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 {
-    /* 1 */
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_GPUTextureSamplerBinding textureBindings{};
+    textureBindings.sampler = sampler;
+    textureBindings.texture = texture.GetReadTexture();
+    BindPipeline(computePass, ComputePipelineTypeSetBnd4);
+    SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
+    SDL_DispatchGPUCompute(computePass, 1, 1, 1);
+    SDL_EndGPUComputePass(computePass);
 }
 
-static void SetBnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
+static void SetBnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 {
-    /* 1 */
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_GPUTextureSamplerBinding textureBindings{};
+    textureBindings.sampler = sampler;
+    textureBindings.texture = texture.GetReadTexture();
+    int groups = (size + THREADS_3D - 1) / THREADS_3D;
+    BindPipeline(computePass, ComputePipelineTypeSetBnd5);
+    SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
 }
 
+/* TODO: i'm not really sure what set_bnd is supposed to do. it makes the border cells
+sample the raw value (no weighting) from the neighboring cells. that's all. seems wrong */
 static void SetBnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    /* TODO: i can get type from the texture (1, 2, 3 for velocities, 0 for anything else) */
-    /* TODO: in the example, the guy handles the sides, corners, but not the edges? there's no way that's right */
-    SetBnd1(commandBuffer, texture, type);
-    SetBnd2(commandBuffer, texture, type);
-    SetBnd3(commandBuffer, texture, type);
-    SetBnd4(commandBuffer, texture, type);
-    SetBnd5(commandBuffer, texture, type);
-
-    /* uncomment when ready to do bounds shit */
+    /* TODO: only sides and corners are handled in the example (not edges) */
+    // SetBnd1(commandBuffer, texture, type);
+    // SetBnd2(commandBuffer, texture, type);
+    // SetBnd3(commandBuffer, texture, type);
+    // SetBnd4(commandBuffer, texture);
+    // SetBnd5(commandBuffer, texture);
     // texture.Swap();
 }
 
@@ -539,7 +651,40 @@ static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
     SDL_EndGPURenderPass(renderPass);
 }
 
-static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
+static void RenderAll(SDL_GPUCommandBuffer* commandBuffer)
+{
+    DEBUG_GROUP(device, commandBuffer);
+    SDL_GPUColorTargetInfo colorInfo{};
+    SDL_GPUDepthStencilTargetInfo depthInfo{};
+    colorInfo.texture = colorTexture;
+    colorInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    colorInfo.store_op = SDL_GPU_STOREOP_STORE;
+    depthInfo.texture = depthTexture;
+    depthInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    depthInfo.store_op = SDL_GPU_STOREOP_STORE;
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, &depthInfo);
+    if (!renderPass)
+    {
+        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+        return;
+    }
+    SDL_GPUTextureSamplerBinding textureBinding[4]{};
+    textureBinding[0].sampler = sampler;
+    textureBinding[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBinding[1].sampler = sampler;
+    textureBinding[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBinding[2].sampler = sampler;
+    textureBinding[2].texture = textures[TextureVelocityZ].GetReadTexture();
+    textureBinding[3].sampler = sampler;
+    textureBinding[3].texture = textures[TextureDensity].GetReadTexture();
+    BindPipeline(renderPass, GraphicsPipelineTypeAll);
+    SDL_BindGPUVertexSamplers(renderPass, 0, textureBinding, 4);
+    SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
+    RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
+    SDL_EndGPURenderPass(renderPass);
+}
+
+static void RenderDebug(SDL_GPUCommandBuffer* commandBuffer)
 {
     DEBUG_GROUP(device, commandBuffer);
     SDL_GPUColorTargetInfo colorInfo{};
@@ -559,7 +704,7 @@ static void RenderVoxel(SDL_GPUCommandBuffer* commandBuffer)
     SDL_GPUTextureSamplerBinding textureBinding{};
     textureBinding.sampler = sampler;
     textureBinding.texture = textures[texture].GetReadTexture();
-    BindPipeline(renderPass, GraphicsPipelineTypeVoxel);
+    BindPipeline(renderPass, GraphicsPipelineTypeDebug);
     SDL_BindGPUVertexSamplers(renderPass, 0, &textureBinding, 1);
     SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
     RenderMesh(renderPass, MeshTypeTriangleCube, size * size * size);
@@ -688,7 +833,14 @@ static void Update()
         cooldown = delay;
     }
     RenderOutline(commandBuffer);
-    RenderVoxel(commandBuffer);
+    if (texture == TextureCount)
+    {
+        RenderAll(commandBuffer);
+    }
+    else
+    {
+        RenderDebug(commandBuffer);
+    }
     Letterbox(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
     SDL_SubmitGPUCommandBuffer(commandBuffer);

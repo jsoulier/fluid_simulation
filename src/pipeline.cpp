@@ -8,11 +8,14 @@ static SDL_GPUComputePipeline* computePipelines[ComputePipelineTypeCount];
 
 bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
 {
-    SDL_GPUShader* voxelFragShader = LoadShader(device, "voxel.frag");
-    SDL_GPUShader* voxelVertShader = LoadShader(device, "voxel.vert");
+    SDL_GPUShader* allFragShader = LoadShader(device, "all.frag");
+    SDL_GPUShader* allVertShader = LoadShader(device, "all.vert");
+    SDL_GPUShader* debugFragShader = LoadShader(device, "debug.frag");
+    SDL_GPUShader* debugVertShader = LoadShader(device, "debug.vert");
     SDL_GPUShader* outlineFragShader = LoadShader(device, "outline.frag");
     SDL_GPUShader* outlineVertShader = LoadShader(device, "outline.vert");
-    if (!voxelFragShader || !voxelVertShader || !outlineFragShader || !outlineVertShader)
+    if (!allFragShader || !allVertShader || !debugFragShader ||
+        !debugVertShader || !outlineFragShader || !outlineVertShader)
     {
         SDL_Log("Failed to create shader(s)");
         return false;
@@ -37,8 +40,6 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
     target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
     target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
     SDL_GPUGraphicsPipelineCreateInfo info{};
-    info.vertex_shader = voxelVertShader;
-    info.fragment_shader = voxelFragShader;
     info.vertex_input_state.vertex_buffer_descriptions = &buffer;
     info.vertex_input_state.num_vertex_buffers = 1;
     info.vertex_input_state.vertex_attributes = &attrib;
@@ -49,7 +50,12 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
     info.target_info.has_depth_stencil_target = true;
     info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_LESS;
     info.depth_stencil_state.enable_depth_write = true;
-    graphicsPipelines[GraphicsPipelineTypeVoxel] = SDL_CreateGPUGraphicsPipeline(device, &info);
+    info.vertex_shader = allVertShader;
+    info.fragment_shader = allFragShader;
+    graphicsPipelines[GraphicsPipelineTypeAll] = SDL_CreateGPUGraphicsPipeline(device, &info);
+    info.vertex_shader = debugVertShader;
+    info.fragment_shader = debugFragShader;
+    graphicsPipelines[GraphicsPipelineTypeDebug] = SDL_CreateGPUGraphicsPipeline(device, &info);
     info.vertex_shader = outlineVertShader;
     info.fragment_shader = outlineFragShader;
     info.depth_stencil_state.enable_depth_test = true;
@@ -85,8 +91,10 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
             return false;
         }
     }
-    SDL_ReleaseGPUShader(device, voxelFragShader);
-    SDL_ReleaseGPUShader(device, voxelVertShader);
+    SDL_ReleaseGPUShader(device, allFragShader);
+    SDL_ReleaseGPUShader(device, allVertShader);
+    SDL_ReleaseGPUShader(device, debugFragShader);
+    SDL_ReleaseGPUShader(device, debugVertShader);
     SDL_ReleaseGPUShader(device, outlineFragShader);
     SDL_ReleaseGPUShader(device, outlineVertShader);
     return true;

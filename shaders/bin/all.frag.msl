@@ -10,13 +10,16 @@ struct main0_out
 
 struct main0_in
 {
-    float inValue [[user(locn0)]];
+    float3 inVelocity [[user(locn0)]];
+    float inDensity [[user(locn1)]];
 };
 
 fragment main0_out main0(main0_in in [[stage_in]])
 {
     main0_out out = {};
-    out.outColor = float4(1.0, 0.0, 0.0, in.inValue * 5.0);
+    float3 color = abs(in.inVelocity) * 5000.0;
+    float alpha = in.inDensity * 100.0;
+    out.outColor = float4(color, alpha);
     return out;
 }
 
