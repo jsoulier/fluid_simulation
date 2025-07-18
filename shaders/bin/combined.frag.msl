@@ -66,9 +66,9 @@ fragment main0_out main0(main0_in in [[stage_in]], constant uniformInverseView& 
         {
             continue;
         }
-        out.outColor.x += inVelocityX.read(uint3(id), 0).x;
-        out.outColor.y += inVelocityY.read(uint3(id), 0).x;
-        out.outColor.z += inVelocityZ.read(uint3(id), 0).x;
+        out.outColor.x += abs(inVelocityX.read(uint3(id), 0).x);
+        out.outColor.y += abs(inVelocityY.read(uint3(id), 0).x);
+        out.outColor.z += abs(inVelocityZ.read(uint3(id), 0).x);
         out.outColor.w += inDensity.read(uint3(id), 0).x;
     }
     out.outColor *= 20.0;

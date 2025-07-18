@@ -99,7 +99,7 @@ static constexpr const char* Textures[] =
     "Pressure",
     "Divergence",
     "Density",
-    "All",
+    "Combined",
 };
 
 static constexpr Texture Spawners[] =
@@ -440,6 +440,11 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     {
         SDL_ShowOpenFileDialog(LoadCallback, nullptr, window, nullptr, 1, location, false);
     }
+    ImGui::SameLine();
+    if (ImGui::Button("Reset"))
+    {
+        CreateCells();
+    }
     ImGui::SeparatorText("Settings");
     ImGui::SliderInt("Delay", &delay, 0, 1000);
     ImGui::SliderInt("Iterations", &state.iterations, 1, 50);
@@ -727,7 +732,7 @@ static void SetBnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textur
     // texture.Swap();
 }
 
-static void RenderAll(SDL_GPUCommandBuffer* commandBuffer)
+static void RenderCombined(SDL_GPUCommandBuffer* commandBuffer)
 {
     DEBUG_GROUP(device, commandBuffer);
     SDL_GPUColorTargetInfo colorInfo{};
@@ -749,7 +754,7 @@ static void RenderAll(SDL_GPUCommandBuffer* commandBuffer)
     textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
     textureBindings[3].sampler = sampler;
     textureBindings[3].texture = textures[TextureDensity].GetReadTexture();
-    BindPipeline(renderPass, GraphicsPipelineTypeAll);
+    BindPipeline(renderPass, GraphicsPipelineTypeCombined);
     SDL_BindGPUFragmentSamplers(renderPass, 0, textureBindings, 4);
     SDL_PushGPUFragmentUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
     SDL_PushGPUFragmentUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
@@ -907,7 +912,7 @@ static void Update()
     }
     if (texture == TextureCount)
     {
-        RenderAll(commandBuffer);
+        RenderCombined(commandBuffer);
     }
     else
     {
@@ -967,7 +972,7 @@ int main(int argc, char** argv)
                 distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
-                if (!focused && event.motion.state & SDL_BUTTON_LMASK)
+                if (!focused && event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
                     yaw += event.motion.xrel * Pan * dt;
@@ -981,6 +986,9 @@ int main(int argc, char** argv)
                     std::lock_guard lock(mutex);
                     CreateCells();
                 }
+                break;
+            case SDL_EVENT_DROP_FILE:
+                LoadCallback(nullptr, &event.drop.data, 0);
                 break;
             case SDL_EVENT_QUIT:
                 running = false;

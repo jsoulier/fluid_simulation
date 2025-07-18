@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/fluid_simulation.exe",
             "args": [
-                "${workspaceFolder}/tests/single_density_and_velocity.json"
+                "${workspaceFolder}/samples/1_density_2_velocities.json"
             ],
             "cwd": "${workspaceFolder}/build/bin",
             "preLaunchTask": "CMake: build"

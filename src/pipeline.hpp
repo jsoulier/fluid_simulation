@@ -4,7 +4,7 @@
 
 enum GraphicsPipelineType
 {
-    GraphicsPipelineTypeAll,
+    GraphicsPipelineTypeCombined,
     GraphicsPipelineTypeDebug,
     GraphicsPipelineTypeCount,
 };

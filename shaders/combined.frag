@@ -33,9 +33,9 @@ void main()
         {
             continue;
         }
-        outColor.r += texelFetch(inVelocityX, id, 0).x;
-        outColor.g += texelFetch(inVelocityY, id, 0).x;
-        outColor.b += texelFetch(inVelocityZ, id, 0).x;
+        outColor.r += abs(texelFetch(inVelocityX, id, 0).x);
+        outColor.g += abs(texelFetch(inVelocityY, id, 0).x);
+        outColor.b += abs(texelFetch(inVelocityZ, id, 0).x);
         outColor.a += texelFetch(inDensity, id, 0).x;
     }
     outColor *= ColorScale;

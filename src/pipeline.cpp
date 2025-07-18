@@ -8,33 +8,33 @@ static SDL_GPUComputePipeline* computePipelines[ComputePipelineTypeCount];
 
 bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
 {
-    SDL_GPUShader* allFragShader = LoadShader(device, "all.frag");
-    SDL_GPUShader* allVertShader = LoadShader(device, "all.vert");
+    SDL_GPUShader* combinedFragShader = LoadShader(device, "combined.frag");
+    SDL_GPUShader* combinedVertShader = LoadShader(device, "combined.vert");
     SDL_GPUShader* debugFragShader = LoadShader(device, "debug.frag");
     SDL_GPUShader* debugVertShader = LoadShader(device, "debug.vert");
-    if (!allFragShader || !allVertShader || !debugFragShader || !debugVertShader)
+    if (!combinedFragShader || !combinedVertShader || !debugFragShader || !debugVertShader)
     {
         SDL_Log("Failed to create shader(s)");
         return false;
     }
     SDL_GPUColorTargetDescription target{};
     target.format = SDL_GetGPUSwapchainTextureFormat(device, window);
-    // target.blend_state.enable_blend = true;
-    // target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
-    // target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
-    // target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
-    // target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
-    // target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
-    // target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    target.blend_state.enable_blend = true;
+    target.blend_state.alpha_blend_op = SDL_GPU_BLENDOP_ADD;
+    target.blend_state.color_blend_op = SDL_GPU_BLENDOP_ADD;
+    target.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    target.blend_state.src_alpha_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
+    target.blend_state.dst_color_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+    target.blend_state.dst_alpha_blendfactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
     SDL_GPUGraphicsPipelineCreateInfo info{};
     info.target_info.color_target_descriptions = &target;
     info.target_info.num_color_targets = 1;
+    info.vertex_shader = combinedVertShader;
+    info.fragment_shader = combinedFragShader;
+    graphicsPipelines[GraphicsPipelineTypeCombined] = SDL_CreateGPUGraphicsPipeline(device, &info);
     info.vertex_shader = debugVertShader;
     info.fragment_shader = debugFragShader;
     graphicsPipelines[GraphicsPipelineTypeDebug] = SDL_CreateGPUGraphicsPipeline(device, &info);
-    info.vertex_shader = allVertShader;
-    info.fragment_shader = allFragShader;
-    graphicsPipelines[GraphicsPipelineTypeAll] = SDL_CreateGPUGraphicsPipeline(device, &info);
     for (int i = GraphicsPipelineTypeCount - 1; i >= 0; i--)
     {
         if (!graphicsPipelines[i])
@@ -65,8 +65,8 @@ bool CreatePipelines(SDL_GPUDevice* device, SDL_Window* window)
             return false;
         }
     }
-    SDL_ReleaseGPUShader(device, allFragShader);
-    SDL_ReleaseGPUShader(device, allVertShader);
+    SDL_ReleaseGPUShader(device, combinedFragShader);
+    SDL_ReleaseGPUShader(device, combinedVertShader);
     SDL_ReleaseGPUShader(device, debugFragShader);
     SDL_ReleaseGPUShader(device, debugVertShader);
     return true;

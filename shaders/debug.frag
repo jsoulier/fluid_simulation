@@ -30,7 +30,7 @@ void main()
         {
             continue;
         }
-        outColor += texelFetch(inImage, id, 0).x;
+        outColor += abs(texelFetch(inImage, id, 0).x);
     }
     outColor *= ColorScale;
 }

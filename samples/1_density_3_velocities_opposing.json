@@ -1,0 +1,44 @@
+{
+    "diffusion": 0.08799999952316284,
+    "iterations": 3,
+    "size": 128,
+    "spawners": [
+        {
+            "position": [
+                63,
+                63,
+                63
+            ],
+            "texture": 5,
+            "value": 1000.0
+        },
+        {
+            "position": [
+                63,
+                1,
+                63
+            ],
+            "texture": 1,
+            "value": 10.0
+        },
+        {
+            "position": [
+                1,
+                63,
+                63
+            ],
+            "texture": 0,
+            "value": 10.0
+        },
+        {
+            "position": [
+                63,
+                63,
+                1
+            ],
+            "texture": 2,
+            "value": 10.0
+        }
+    ],
+    "viscosity": 0.16500000655651093
+}

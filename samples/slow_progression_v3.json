@@ -1,0 +1,116 @@
+{
+    "diffusion": 0.12800000607967377,
+    "iterations": 5,
+    "size": 128,
+    "spawners": [
+        {
+            "position": [
+                63,
+                63,
+                63
+            ],
+            "texture": 5,
+            "value": 1200.0
+        },
+        {
+            "position": [
+                63,
+                63,
+                63
+            ],
+            "texture": 0,
+            "value": 1.0
+        },
+        {
+            "position": [
+                63,
+                18,
+                63
+            ],
+            "texture": 1,
+            "value": 2.0
+        },
+        {
+            "position": [
+                126,
+                99,
+                63
+            ],
+            "texture": 0,
+            "value": -2.0
+        },
+        {
+            "position": [
+                63,
+                99,
+                17
+            ],
+            "texture": 2,
+            "value": 8.0
+        },
+        {
+            "position": [
+                54,
+                126,
+                69
+            ],
+            "texture": 1,
+            "value": -4.0
+        },
+        {
+            "position": [
+                30,
+                89,
+                126
+            ],
+            "texture": 2,
+            "value": -11.0
+        },
+        {
+            "position": [
+                1,
+                63,
+                1
+            ],
+            "texture": 0,
+            "value": 23.0
+        },
+        {
+            "position": [
+                1,
+                63,
+                1
+            ],
+            "texture": 1,
+            "value": -14.0
+        },
+        {
+            "position": [
+                51,
+                28,
+                1
+            ],
+            "texture": 2,
+            "value": 6.0
+        },
+        {
+            "position": [
+                78,
+                18,
+                118
+            ],
+            "texture": 1,
+            "value": 7.0
+        },
+        {
+            "position": [
+                1,
+                63,
+                1
+            ],
+            "texture": 5,
+            "value": 1029.0
+        }
+    ],
+    "viscosity": 0.009999999776482582
+}
