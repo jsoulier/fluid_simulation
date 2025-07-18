@@ -2,7 +2,7 @@
 
 https://github.com/user-attachments/assets/da450974-2e93-45e5-acac-0d70a1bbebc6
 
-3D Fluid Simulation using SDL3 GPU with compute shaders
+Implementation of [Fluid Simulation for Dummies](https://mikeash.com/pyblog/fluid-simulation-for-dummies.html) using the new SDL3 GPU API with compute shaders
 
 ### Building
 
@@ -60,7 +60,3 @@ cd bin
 *Velocity (Z)*
 ![](doc/image13.png)
 *Colored Density*
-
-### References
-
-- [Fluid Simulation for Dummies](https://mikeash.com/pyblog/fluid-simulation-for-dummies.html) by Mike Ash
