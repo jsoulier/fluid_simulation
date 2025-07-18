@@ -1,6 +1,6 @@
 # 3D Fluid Simulation
 
-https://github.com/user-attachments/assets/1ad166a8-c712-4bff-95cf-cbb520181d00
+https://github.com/user-attachments/assets/da450974-2e93-45e5-acac-0d70a1bbebc6
 
 3D Fluid Simulation using SDL3 GPU with compute shaders
 
@@ -34,22 +34,32 @@ cd bin
 ./fluid_simulation
 ```
 
-### Images
+### Gallery
 
-![](doc/velocity_x.png)
-*Velocity (X)*
+#### Offset Opposing
 
-![](doc/velocity_y.png)
+![](doc/image6.png)
 *Velocity (Y)*
+![](doc/image7.png)
+*Colored Density*
 
-![](doc/velocity_z.png)
+#### Unbalanced Opposing
+
+![](doc/image8.png)
+*Velocity (Y)*
+![](doc/image9.png)
+*Colored Density*
+
+#### Intersecting
+
+![](doc/image10.png)
+*Velocity (X)*
+![](doc/image11.png)
+*Velocity (Y)*
+![](doc/image12.png)
 *Velocity (Z)*
-
-![](doc/density.png)
-*Density*
-
-![](doc/combined.png)
-*Combined*
+![](doc/image13.png)
+*Colored Density*
 
 ### References
 
