@@ -13,6 +13,7 @@ make_directory(${BINARY_DIR})
 set(GLM_BUILD_LIBRARY OFF)
 add_subdirectory(lib/SDL)
 add_subdirectory(lib/glm)
+add_subdirectory(lib/json)
 add_executable(fluid_simulation WIN32
     lib/imgui/imgui.cpp
     lib/imgui/imgui_demo.cpp
@@ -30,8 +31,7 @@ add_executable(fluid_simulation WIN32
 )
 set_target_properties(fluid_simulation PROPERTIES CXX_STANDARD 23)
 target_include_directories(fluid_simulation PRIVATE lib/imgui)
-target_include_directories(fluid_simulation PRIVATE lib/jsmn)
-target_link_libraries(fluid_simulation PRIVATE SDL3::SDL3 glm)
+target_link_libraries(fluid_simulation PRIVATE SDL3::SDL3 glm nlohmann_json)
 
 function(add_shader FILE)
     set(DEPENDS ${ARGN})

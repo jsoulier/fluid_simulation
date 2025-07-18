@@ -10,7 +10,6 @@ layout(set = 1, binding = 0) uniform uniformViewProj
 
 void main()
 {
-    /* TODO: gl_InstanceIndex or gl_InstanceID? */
     ivec3 size = textureSize(inImage, 0);
     uint z = gl_InstanceIndex / (size.x * size.y);
     uint y = (gl_InstanceIndex / size.x) % size.y;

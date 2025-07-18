@@ -1,9 +1,9 @@
 #include <SDL3/SDL.h>
-#include <jsmn.h>
+#include <nlohmann/json.hpp>
 
 #include <cassert>
 #include <cstdint>
-#include <cstring>
+#include <exception>
 #include <format>
 #include <fstream>
 #include <iterator>
@@ -54,72 +54,29 @@ static void* Load(SDL_GPUDevice* device, const std::string_view& name)
         return nullptr;
     }
     std::string shaderData(std::istreambuf_iterator<char>(shaderFile), {});
-    std::string jsonData(std::istreambuf_iterator<char>(jsonFile), {});
-    jsmn_parser parser;
-    jsmntok_t tokens[19];
-    jsmn_init(&parser);
-    if (jsmn_parse(&parser, jsonData.data(), jsonData.size(), tokens, 19) <= 0)
+    nlohmann::json json;
+    try
     {
-        SDL_Log("Failed to parse json: %s", jsonPath.data());
+        jsonFile >> json;
+    }
+    catch (const std::exception& exception)
+    {
+        SDL_Log("Failed to parse json: %s, %s", jsonPath.data(), exception.what());
         return nullptr;
     }
     void* shader = nullptr;
     if (name.contains(".comp"))
     {
         SDL_GPUComputePipelineCreateInfo info{};
-        for (int i = 1; i < 19; i += 2)
-        {
-            if (tokens[i].type != JSMN_STRING)
-            {
-                SDL_Log("Bad json type: %s", jsonPath.data());
-                return nullptr;
-            }
-            char* keyString = jsonData.data() + tokens[i + 0].start;
-            char* valueString = jsonData.data() + tokens[i + 1].start;
-            int keySize = tokens[i + 0].end - tokens[i + 0].start;
-            uint32_t* value;
-            if (!std::memcmp("samplers", keyString, keySize))
-            {
-                value = &info.num_samplers;
-            }
-            else if (!std::memcmp("readonly_storage_textures", keyString, keySize))
-            {
-                value = &info.num_readonly_storage_textures;
-            }
-            else if (!std::memcmp("readonly_storage_buffers", keyString, keySize))
-            {
-                value = &info.num_readonly_storage_buffers;
-            }
-            else if (!std::memcmp("readwrite_storage_textures", keyString, keySize))
-            {
-                value = &info.num_readwrite_storage_textures;
-            }
-            else if (!std::memcmp("readwrite_storage_buffers", keyString, keySize))
-            {
-                value = &info.num_readwrite_storage_buffers;
-            }
-            else if (!std::memcmp("uniform_buffers", keyString, keySize))
-            {
-                value = &info.num_uniform_buffers;
-            }
-            else if (!std::memcmp("threadcount_x", keyString, keySize))
-            {
-                value = &info.threadcount_x;
-            }
-            else if (!std::memcmp("threadcount_y", keyString, keySize))
-            {
-                value = &info.threadcount_y;
-            }
-            else if (!std::memcmp("threadcount_z", keyString, keySize))
-            {
-                value = &info.threadcount_z;
-            }
-            else
-            {
-                assert(false);
-            }
-            *value = *valueString - '0';
-        }
+        info.num_samplers = json["samplers"];
+        info.num_readonly_storage_textures = json["readonly_storage_textures"];
+        info.num_readonly_storage_buffers = json["readonly_storage_buffers"];
+        info.num_readwrite_storage_textures = json["readwrite_storage_textures"];
+        info.num_readwrite_storage_buffers = json["readwrite_storage_buffers"];
+        info.num_uniform_buffers = json["uniform_buffers"];
+        info.threadcount_x = json["threadcount_x"];
+        info.threadcount_y = json["threadcount_y"];
+        info.threadcount_z = json["threadcount_z"];
         info.code = reinterpret_cast<Uint8*>(shaderData.data());
         info.code_size = shaderData.size();
         info.entrypoint = entrypoint;
@@ -129,39 +86,10 @@ static void* Load(SDL_GPUDevice* device, const std::string_view& name)
     else
     {
         SDL_GPUShaderCreateInfo info{};
-        for (int i = 1; i < 9; i += 2)
-        {
-            if (tokens[i].type != JSMN_STRING)
-            {
-                SDL_Log("Bad json type: %s", jsonPath.data());
-                return nullptr;
-            }
-            char* keyString = jsonData.data() + tokens[i + 0].start;
-            char* valueString = jsonData.data() + tokens[i + 1].start;
-            int keySize = tokens[i + 0].end - tokens[i + 0].start;
-            uint32_t* value;
-            if (!std::memcmp("samplers", keyString, keySize))
-            {
-                value = &info.num_samplers;
-            }
-            else if (!std::memcmp("storage_textures", keyString, keySize))
-            {
-                value = &info.num_storage_textures;
-            }
-            else if (!std::memcmp("storage_buffers", keyString, keySize))
-            {
-                value = &info.num_storage_buffers;
-            }
-            else if (!std::memcmp("uniform_buffers", keyString, keySize))
-            {
-                value = &info.num_uniform_buffers;
-            }
-            else
-            {
-                assert(false);
-            }
-            *value = *valueString - '0';
-        }
+        info.num_samplers = json["samplers"];
+        info.num_storage_textures = json["storage_textures"];
+        info.num_storage_buffers = json["storage_buffers"];
+        info.num_uniform_buffers = json["uniform_buffers"];
         info.code = reinterpret_cast<Uint8*>(shaderData.data());
         info.code_size = shaderData.size();
         info.entrypoint = entrypoint;
