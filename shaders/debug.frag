@@ -1,13 +1,36 @@
 #version 450
 
-layout(location = 0) in float inValue;
-layout(location = 0) out vec4 outColor;
+#include "shader.glsl"
 
-const float Scale = 20.0f;
+layout(location = 0) in vec2 inTexcoord;
+layout(location = 0) out vec4 outColor;
+layout(set = 2, binding = 0) uniform sampler3D inImage;
+layout(set = 3, binding = 0) uniform uniformInverseView
+{
+    mat4 inverseView;
+};
+layout(set = 3, binding = 1) uniform uniformInverseProj
+{
+    mat4 inverseProj;
+};
+layout(set = 3, binding = 2) uniform uniformCameraPosition
+{
+    vec3 cameraPosition;
+};
 
 void main()
 {
-    vec3 color = vec3(1.0f);
-    float alpha = abs(inValue * Scale);
-    outColor = vec4(color, alpha);
+    ivec3 size = textureSize(inImage, 0);
+    vec3 rayDirection = GetRayDirection(inverseView, inverseProj, inTexcoord);
+    outColor = vec4(0.0f);
+    for (int i = 0; i < MaxSteps; i++)
+    {
+        ivec3 id = ivec3(cameraPosition + rayDirection * i * StepSize);
+        if (any(greaterThanEqual(id, size)) || any(lessThan(id, ivec3(0))))
+        {
+            continue;
+        }
+        outColor += texelFetch(inImage, id, 0).x;
+    }
+    outColor *= ColorScale;
 }

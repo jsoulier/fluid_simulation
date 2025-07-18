@@ -1,15 +1,42 @@
 #version 450
 
-layout(location = 0) in vec3 inVelocity;
-layout(location = 1) in float inDensity;
-layout(location = 0) out vec4 outColor;
+#include "shader.glsl"
 
-const float VelocityScale = 5000.0f;
-const float DensityScale = 100.0f;
+layout(location = 0) in vec2 inTexcoord;
+layout(location = 0) out vec4 outColor;
+layout(set = 2, binding = 0) uniform sampler3D inVelocityX;
+layout(set = 2, binding = 1) uniform sampler3D inVelocityY;
+layout(set = 2, binding = 2) uniform sampler3D inVelocityZ;
+layout(set = 2, binding = 3) uniform sampler3D inDensity;
+layout(set = 3, binding = 0) uniform uniformInverseView
+{
+    mat4 inverseView;
+};
+layout(set = 3, binding = 1) uniform uniformInverseProj
+{
+    mat4 inverseProj;
+};
+layout(set = 3, binding = 2) uniform uniformCameraPosition
+{
+    vec3 cameraPosition;
+};
 
 void main()
 {
-    vec3 color = abs(inVelocity) * VelocityScale;
-    float alpha = inDensity * DensityScale;
-    outColor = vec4(color, alpha);
+    ivec3 size = textureSize(inVelocityX, 0);
+    vec3 rayDirection = GetRayDirection(inverseView, inverseProj, inTexcoord);
+    outColor = vec4(0.0f);
+    for (int i = 0; i < MaxSteps; i++)
+    {
+        ivec3 id = ivec3(cameraPosition + rayDirection * i * StepSize);
+        if (any(greaterThanEqual(id, size)) || any(lessThan(id, ivec3(0))))
+        {
+            continue;
+        }
+        outColor.r += texelFetch(inVelocityX, id, 0).x;
+        outColor.g += texelFetch(inVelocityY, id, 0).x;
+        outColor.b += texelFetch(inVelocityZ, id, 0).x;
+        outColor.a += texelFetch(inDensity, id, 0).x;
+    }
+    outColor *= ColorScale;
 }

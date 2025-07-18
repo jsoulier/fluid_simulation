@@ -6,6 +6,9 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/bin/fluid_simulation.exe",
+            "args": [
+                "${workspaceFolder}/tests/single_density_and_velocity.json"
+            ],
             "cwd": "${workspaceFolder}/build/bin",
             "preLaunchTask": "CMake: build"
         },

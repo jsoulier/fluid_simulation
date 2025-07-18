@@ -1,6 +1,19 @@
 #ifndef SHADER_GLSL
 #define SHADER_GLSL
 
+const float StepSize = 1;
+const int MaxSteps = 512;
+const float ColorScale = 20.0f;
+
+vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
+{
+    vec4 ndc = vec4(texcoord * 2.0 - 1.0, 0.0, 1.0);
+    vec4 viewRay = inverseProj * ndc;
+    viewRay /= viewRay.w;
+    vec4 worldRay = inverseView * vec4(viewRay.xyz, 0.0);
+    return normalize(worldRay.xyz);
+}
+
 /* modified to only read from the read image */
 #define LIN_SOLVE(id, inImage, outImage, a, c) \
     do \

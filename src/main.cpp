@@ -22,7 +22,6 @@
 
 #include "config.hpp"
 #include "debug_group.hpp"
-#include "mesh.hpp"
 #include "pipeline.hpp"
 #include "rw_texture.hpp"
 #include "shader.hpp"
@@ -48,18 +47,16 @@ struct Spawner
 void to_json(nlohmann::json& json, const Spawner& spawner)
 {
     json["texture"] = spawner.texture;
-    const int* position = spawner.position;
-    json["position"] = {position[0], position[1], position[2]};
+    json["position"] = spawner.position;
     json["value"] = spawner.value;
 }
 
 void from_json(const nlohmann::json& json, Spawner& spawner)
 {
     spawner.texture = json["texture"];
-    const auto& position = json["position"];
-    spawner.position[0] = position[0];
-    spawner.position[1] = position[1];
-    spawner.position[2] = position[2];
+    spawner.position[0] = json["position"][0];
+    spawner.position[1] = json["position"][1];
+    spawner.position[2] = json["position"][2];
     spawner.value = json["value"];
 }
 
@@ -69,7 +66,6 @@ struct State
     int iterations = 5;
     float diffusion = 0.01f;
     float viscosity = 0.01f;
-    glm::vec3 position;
     std::vector<Spawner> spawners;
 };
 
@@ -79,7 +75,6 @@ void to_json(nlohmann::json& json, const State& state)
     json["iterations"] = state.iterations;
     json["diffusion"] = state.diffusion;
     json["viscosity"] = state.viscosity;
-    json["position"] = { state.position.x, state.position.y, state.position.z };
     json["spawners"] = state.spawners;
 }
 
@@ -89,10 +84,6 @@ void from_json(const nlohmann::json& json, State& state)
     state.iterations = json["iterations"];
     state.diffusion = json["diffusion"];
     state.viscosity = json["viscosity"];
-    const auto& position = json["position"];
-    state.position.x = position[0];
-    state.position.y = position[1];
-    state.position.z = position[2];
     state.spawners = json["spawners"];
 }
 
@@ -130,7 +121,6 @@ static constexpr float Far = 1000.0f;
 static SDL_Window* window;
 static SDL_GPUDevice* device;
 static SDL_GPUTexture* colorTexture;
-static SDL_GPUTexture* depthTexture;
 static uint32_t width;
 static uint32_t height;
 static ReadWriteTexture textures[TextureCount];
@@ -143,8 +133,11 @@ static uint64_t time2;
 static float pitch;
 static float yaw;
 static float distance = 200;
+static glm::vec3 position;
 static glm::mat4 view;
 static glm::mat4 proj;
+static glm::mat4 inverseView;
+static glm::mat4 inverseProj;
 static glm::mat4 viewProj;
 static int texture = TextureCount;
 static bool focused;
@@ -200,8 +193,13 @@ static bool Init()
 
 static bool CreateSamplers()
 {
-    /* NOTE: dummy sampler for texelFetch (readonly storage textures are broken on Vulkan) */
     SDL_GPUSamplerCreateInfo info{};
+    info.min_filter = SDL_GPU_FILTER_NEAREST;
+    info.mag_filter = SDL_GPU_FILTER_NEAREST;
+    info.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+    info.address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    info.address_mode_v = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     sampler = SDL_CreateGPUSampler(device, &info);
     if (!sampler)
     {
@@ -227,33 +225,22 @@ static bool CreateTextures()
         SDL_Log("Failed to create texture: %s", SDL_GetError());
         return false;
     }
-    info.format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
-    info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
-    info.props = SDL_CreateProperties();
-    SDL_SetFloatProperty(info.props, SDL_PROP_GPU_TEXTURE_CREATE_D3D12_CLEAR_DEPTH_FLOAT, 1.0f);
-    depthTexture = SDL_CreateGPUTexture(device, &info);
-    if (!depthTexture)
-    {
-        SDL_Log("Failed to create texture: %s", SDL_GetError());
-        return false;
-    }
-    SDL_DestroyProperties(info.props);
     return true;
 }
 
 static void UpdateViewProj()
 {
-    static constexpr glm::vec3 Up{0.0f, 1.0f, 0.0f};
-    float cosPitch = std::cos(pitch);
     glm::vec3 vector;
-    vector.x = cosPitch * std::cos(yaw);
+    vector.x = std::cos(pitch) * std::cos(yaw);
     vector.y = std::sin(pitch);
-    vector.z = cosPitch * std::sin(yaw);
+    vector.z = std::cos(pitch) * std::sin(yaw);
     float ratio = static_cast<float>(Width) / Height;
     glm::vec3 center = glm::vec3(state.size / 2);
-    glm::vec3 position = center - vector * distance;
-    view = glm::lookAt(position, position + vector, Up);
+    position = center - vector * distance;
+    view = glm::lookAt(position, position + vector, {0.0f, 1.0f, 0.0f});
     proj = glm::perspective(Fov, ratio, Near, Far);
+    inverseView = glm::inverse(view);
+    inverseProj = glm::inverse(proj);
     viewProj = proj * view;
 }
 
@@ -740,64 +727,34 @@ static void SetBnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textur
     // texture.Swap();
 }
 
-static void RenderOutline(SDL_GPUCommandBuffer* commandBuffer)
-{
-    DEBUG_GROUP(device, commandBuffer);
-    SDL_GPUColorTargetInfo colorInfo{};
-    SDL_GPUDepthStencilTargetInfo depthInfo{};
-    colorInfo.texture = colorTexture;
-    colorInfo.load_op = SDL_GPU_LOADOP_CLEAR;
-    colorInfo.store_op = SDL_GPU_STOREOP_STORE;
-    colorInfo.cycle = true;
-    depthInfo.texture = depthTexture;
-    depthInfo.load_op = SDL_GPU_LOADOP_CLEAR;
-    depthInfo.stencil_load_op = SDL_GPU_LOADOP_CLEAR;
-    depthInfo.store_op = SDL_GPU_STOREOP_STORE;
-    depthInfo.clear_depth = 1.0f;
-    depthInfo.cycle = true;
-    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, &depthInfo);
-    if (!renderPass)
-    {
-        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
-        return;
-    }
-    BindPipeline(renderPass, GraphicsPipelineTypeOutline);
-    SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    SDL_PushGPUVertexUniformData(commandBuffer, 1, &state.size, sizeof(state.size));
-    RenderMesh(renderPass, MeshTypeLineCube, 1);
-    SDL_EndGPURenderPass(renderPass);
-}
-
 static void RenderAll(SDL_GPUCommandBuffer* commandBuffer)
 {
     DEBUG_GROUP(device, commandBuffer);
     SDL_GPUColorTargetInfo colorInfo{};
-    SDL_GPUDepthStencilTargetInfo depthInfo{};
     colorInfo.texture = colorTexture;
-    colorInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    colorInfo.load_op = SDL_GPU_LOADOP_CLEAR;
     colorInfo.store_op = SDL_GPU_STOREOP_STORE;
-    depthInfo.texture = depthTexture;
-    depthInfo.load_op = SDL_GPU_LOADOP_LOAD;
-    depthInfo.store_op = SDL_GPU_STOREOP_STORE;
-    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, &depthInfo);
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, nullptr);
     if (!renderPass)
     {
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
         return;
     }
-    SDL_GPUTextureSamplerBinding textureBinding[4]{};
-    textureBinding[0].sampler = sampler;
-    textureBinding[0].texture = textures[TextureVelocityX].GetReadTexture();
-    textureBinding[1].sampler = sampler;
-    textureBinding[1].texture = textures[TextureVelocityY].GetReadTexture();
-    textureBinding[2].sampler = sampler;
-    textureBinding[2].texture = textures[TextureVelocityZ].GetReadTexture();
-    textureBinding[3].sampler = sampler;
-    textureBinding[3].texture = textures[TextureDensity].GetReadTexture();
+    SDL_GPUTextureSamplerBinding textureBindings[4]{};
+    textureBindings[0].sampler = sampler;
+    textureBindings[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[1].sampler = sampler;
+    textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[2].sampler = sampler;
+    textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
+    textureBindings[3].sampler = sampler;
+    textureBindings[3].texture = textures[TextureDensity].GetReadTexture();
     BindPipeline(renderPass, GraphicsPipelineTypeAll);
-    SDL_BindGPUVertexSamplers(renderPass, 0, textureBinding, 4);
-    SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    RenderMesh(renderPass, MeshTypeTriangleCube, state.size * state.size * state.size);
+    SDL_BindGPUFragmentSamplers(renderPass, 0, textureBindings, 4);
+    SDL_PushGPUFragmentUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
+    SDL_PushGPUFragmentUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
+    SDL_PushGPUFragmentUniformData(commandBuffer, 2, &position, sizeof(position));
+    SDL_DrawGPUPrimitives(renderPass, 4, 1, 0, 0);
     SDL_EndGPURenderPass(renderPass);
 }
 
@@ -805,14 +762,10 @@ static void RenderDebug(SDL_GPUCommandBuffer* commandBuffer)
 {
     DEBUG_GROUP(device, commandBuffer);
     SDL_GPUColorTargetInfo colorInfo{};
-    SDL_GPUDepthStencilTargetInfo depthInfo{};
     colorInfo.texture = colorTexture;
-    colorInfo.load_op = SDL_GPU_LOADOP_LOAD;
+    colorInfo.load_op = SDL_GPU_LOADOP_CLEAR;
     colorInfo.store_op = SDL_GPU_STOREOP_STORE;
-    depthInfo.texture = depthTexture;
-    depthInfo.load_op = SDL_GPU_LOADOP_LOAD;
-    depthInfo.store_op = SDL_GPU_STOREOP_STORE;
-    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, &depthInfo);
+    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, nullptr);
     if (!renderPass)
     {
         SDL_Log("Failed to begin render pass: %s", SDL_GetError());
@@ -822,9 +775,11 @@ static void RenderDebug(SDL_GPUCommandBuffer* commandBuffer)
     textureBinding.sampler = sampler;
     textureBinding.texture = textures[texture].GetReadTexture();
     BindPipeline(renderPass, GraphicsPipelineTypeDebug);
-    SDL_BindGPUVertexSamplers(renderPass, 0, &textureBinding, 1);
-    SDL_PushGPUVertexUniformData(commandBuffer, 0, &viewProj, sizeof(viewProj));
-    RenderMesh(renderPass, MeshTypeTriangleCube, state.size * state.size * state.size);
+    SDL_BindGPUFragmentSamplers(renderPass, 0, &textureBinding, 1);
+    SDL_PushGPUFragmentUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
+    SDL_PushGPUFragmentUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
+    SDL_PushGPUFragmentUniformData(commandBuffer, 2, &position, sizeof(position));
+    SDL_DrawGPUPrimitives(renderPass, 4, 1, 0, 0);
     SDL_EndGPURenderPass(renderPass);
 }
 
@@ -950,7 +905,6 @@ static void Update()
         SetBnd(commandBuffer, textures[TextureDensity], 0);
         cooldown = delay;
     }
-    RenderOutline(commandBuffer);
     if (texture == TextureCount)
     {
         RenderAll(commandBuffer);
@@ -977,11 +931,6 @@ int main(int argc, char** argv)
         SDL_Log("Failed to create pipelines");
         return 1;
     }
-    if (!CreateMeshes(device))
-    {
-        SDL_Log("Failed to create meshes");
-        return 1;
-    }
     if (!CreateSamplers())
     {
         SDL_Log("Failed to create samplers");
@@ -991,6 +940,10 @@ int main(int argc, char** argv)
     {
         SDL_Log("Failed to create textures");
         return 1;
+    }
+    if (argc > 1)
+    {
+        LoadCallback(nullptr, argv + 1, 0);
     }
     if (!CreateCells())
     {
@@ -1014,7 +967,7 @@ int main(int argc, char** argv)
                 distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
-                if (!focused && event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
+                if (!focused && event.motion.state & SDL_BUTTON_LMASK)
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
                     yaw += event.motion.xrel * Pan * dt;
@@ -1047,9 +1000,7 @@ int main(int argc, char** argv)
         textures[i].Free(device);
     }
     SDL_ReleaseGPUTexture(device, colorTexture);
-    SDL_ReleaseGPUTexture(device, depthTexture);
     SDL_ReleaseGPUSampler(device, sampler);
-    FreeMeshes(device);
     FreePipelines(device);
     ImGui_ImplSDLGPU3_Shutdown();
     ImGui_ImplSDL3_Shutdown();

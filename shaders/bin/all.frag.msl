@@ -1,7 +1,24 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
 #include <metal_stdlib>
 #include <simd/simd.h>
 
 using namespace metal;
+
+struct uniformInverseView
+{
+    float4x4 inverseView;
+};
+
+struct uniformInverseProj
+{
+    float4x4 inverseProj;
+};
+
+struct uniformCameraPosition
+{
+    float3 cameraPosition;
+};
 
 struct main0_out
 {
@@ -10,16 +27,51 @@ struct main0_out
 
 struct main0_in
 {
-    float3 inVelocity [[user(locn0)]];
-    float inDensity [[user(locn1)]];
+    float2 inTexcoord [[user(locn0)]];
 };
 
-fragment main0_out main0(main0_in in [[stage_in]])
+static inline __attribute__((always_inline))
+float3 GetRayDirection(thread const float4x4& inverseView, thread const float4x4& inverseProj, thread const float2& texcoord)
+{
+    float4 ndc = float4((texcoord * 2.0) - float2(1.0), 0.0, 1.0);
+    float4 viewRay = inverseProj * ndc;
+    viewRay /= float4(viewRay.w);
+    float4 worldRay = inverseView * float4(viewRay.xyz, 0.0);
+    return fast::normalize(worldRay.xyz);
+}
+
+fragment main0_out main0(main0_in in [[stage_in]], constant uniformInverseView& _73 [[buffer(0)]], constant uniformInverseProj& _76 [[buffer(1)]], constant uniformCameraPosition& _106 [[buffer(2)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float> inDensity [[texture(3)]], sampler inVelocityXSmplr [[sampler(0)]], sampler inVelocityYSmplr [[sampler(1)]], sampler inVelocityZSmplr [[sampler(2)]], sampler inDensitySmplr [[sampler(3)]])
 {
     main0_out out = {};
-    float3 color = abs(in.inVelocity) * 5000.0;
-    float alpha = in.inDensity * 100.0;
-    out.outColor = float4(color, alpha);
+    int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
+    float4x4 param = _73.inverseView;
+    float4x4 param_1 = _76.inverseProj;
+    float2 param_2 = in.inTexcoord;
+    float3 rayDirection = GetRayDirection(param, param_1, param_2);
+    out.outColor = float4(0.0);
+    for (int i = 0; i < 512; i++)
+    {
+        int3 id = int3(_106.cameraPosition + ((rayDirection * float(i)) * 1.0));
+        bool _121 = any(id >= size);
+        bool _129;
+        if (!_121)
+        {
+            _129 = any(id < int3(0));
+        }
+        else
+        {
+            _129 = _121;
+        }
+        if (_129)
+        {
+            continue;
+        }
+        out.outColor.x += inVelocityX.read(uint3(id), 0).x;
+        out.outColor.y += inVelocityY.read(uint3(id), 0).x;
+        out.outColor.z += inVelocityZ.read(uint3(id), 0).x;
+        out.outColor.w += inDensity.read(uint3(id), 0).x;
+    }
+    out.outColor *= 20.0;
     return out;
 }
 

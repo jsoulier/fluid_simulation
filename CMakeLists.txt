@@ -24,7 +24,6 @@ add_executable(fluid_simulation WIN32
     lib/imgui/imgui_widgets.cpp
     src/debug_group.cpp
     src/main.cpp
-    src/mesh.cpp
     src/pipeline.cpp
     src/rw_texture.cpp
     src/shader.cpp
@@ -88,14 +87,12 @@ add_shader(add1.comp)
 add_shader(add2.comp src/config.hpp)
 add_shader(advect1.comp src/config.hpp shaders/shader.glsl)
 add_shader(advect2.comp src/config.hpp shaders/shader.glsl)
-add_shader(all.frag)
-add_shader(all.vert)
+add_shader(all.frag shaders/shader.glsl)
+add_shader(all.vert shaders/shader.glsl)
 add_shader(clear.comp src/config.hpp)
-add_shader(debug.frag)
-add_shader(debug.vert)
+add_shader(debug.frag shaders/shader.glsl)
+add_shader(debug.vert shaders/shader.glsl)
 add_shader(diffuse.comp src/config.hpp shaders/shader.glsl)
-add_shader(outline.frag)
-add_shader(outline.vert)
 add_shader(project1.comp src/config.hpp)
 add_shader(project2.comp src/config.hpp shaders/shader.glsl)
 add_shader(project3.comp src/config.hpp)

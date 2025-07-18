@@ -3,43 +3,17 @@
 
 using namespace metal;
 
-struct uniformViewProj
-{
-    float4x4 viewProj;
-};
-
 struct main0_out
 {
-    float3 outVelocity [[user(locn0)]];
-    float outDensity [[user(locn1)]];
+    float2 outTexcoord [[user(locn0)]];
     float4 gl_Position [[position]];
 };
 
-struct main0_in
-{
-    float3 inPosition [[attribute(0)]];
-};
-
-vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _104 [[buffer(0)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float> inDensity [[texture(3)]], sampler inVelocityXSmplr [[sampler(0)]], sampler inVelocityYSmplr [[sampler(1)]], sampler inVelocityZSmplr [[sampler(2)]], sampler inDensitySmplr [[sampler(3)]], uint gl_InstanceIndex [[instance_id]])
+vertex main0_out main0(uint gl_VertexIndex [[vertex_id]])
 {
     main0_out out = {};
-    int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
-    uint z = uint(int(gl_InstanceIndex) / (size.x * size.y));
-    uint y = uint((int(gl_InstanceIndex) / size.x) % size.y);
-    uint x = uint(int(gl_InstanceIndex) % size.x);
-    int3 id = int3(int(x), int(y), int(z));
-    out.outVelocity.x = inVelocityX.read(uint3(id), 0).x;
-    out.outVelocity.y = inVelocityY.read(uint3(id), 0).x;
-    out.outVelocity.z = inVelocityZ.read(uint3(id), 0).x;
-    out.outDensity = inDensity.read(uint3(id), 0).x;
-    if (out.outDensity > 0.0)
-    {
-        out.gl_Position = _104.viewProj * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
-    }
-    else
-    {
-        out.gl_Position = float4(0.0, 0.0, 2.0, 1.0);
-    }
+    out.outTexcoord = float2(float((int(gl_VertexIndex) << 1) & 2), float(int(gl_VertexIndex) & 2));
+    out.gl_Position = float4((out.outTexcoord * 2.0) - float2(1.0), 0.0, 1.0);
     return out;
 }
 

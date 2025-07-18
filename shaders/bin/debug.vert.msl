@@ -3,38 +3,17 @@
 
 using namespace metal;
 
-struct uniformViewProj
-{
-    float4x4 viewProj;
-};
-
 struct main0_out
 {
-    float outValue [[user(locn0)]];
+    float2 outTexcoord [[user(locn0)]];
     float4 gl_Position [[position]];
 };
 
-struct main0_in
-{
-    float3 inPosition [[attribute(0)]];
-};
-
-vertex main0_out main0(main0_in in [[stage_in]], constant uniformViewProj& _78 [[buffer(0)]], texture3d<float> inImage [[texture(0)]], sampler inImageSmplr [[sampler(0)]], uint gl_InstanceIndex [[instance_id]])
+vertex main0_out main0(uint gl_VertexIndex [[vertex_id]])
 {
     main0_out out = {};
-    int3 size = int3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
-    uint z = uint(int(gl_InstanceIndex) / (size.x * size.y));
-    uint y = uint((int(gl_InstanceIndex) / size.x) % size.y);
-    uint x = uint(int(gl_InstanceIndex) % size.x);
-    out.outValue = inImage.read(uint3(int3(int(x), int(y), int(z))), 0).x;
-    if (abs(out.outValue) > 0.0)
-    {
-        out.gl_Position = _78.viewProj * float4(in.inPosition + float3(float(x), float(y), float(z)), 1.0);
-    }
-    else
-    {
-        out.gl_Position = float4(0.0, 0.0, 2.0, 1.0);
-    }
+    out.outTexcoord = float2(float((int(gl_VertexIndex) << 1) & 2), float(int(gl_VertexIndex) & 2));
+    out.gl_Position = float4((out.outTexcoord * 2.0) - float2(1.0), 0.0, 1.0);
     return out;
 }
 
