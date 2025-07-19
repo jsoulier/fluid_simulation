@@ -269,7 +269,7 @@ static void Add2(SDL_GPUCommandBuffer* commandBuffer, Texture texture, float val
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeAdd2);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -285,7 +285,7 @@ static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeClear);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -479,7 +479,7 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeDiffuse);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
@@ -508,7 +508,7 @@ static void Project1(SDL_GPUCommandBuffer* commandBuffer)
     textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
     textureBindings[2].sampler = sampler;
     textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeProject1);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 3);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -529,7 +529,7 @@ static void Project2(SDL_GPUCommandBuffer* commandBuffer)
     SDL_GPUTextureSamplerBinding textureBinding{};
     textureBinding.sampler = sampler;
     textureBinding.texture = textures[TextureDivergence].GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeProject2);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBinding, 1);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -559,7 +559,7 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
     textureBindings[2].texture = textures[TextureVelocityY].GetReadTexture();
     textureBindings[3].sampler = sampler;
     textureBindings[3].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeProject3);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
@@ -586,7 +586,7 @@ static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
     textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
     textureBindings[2].sampler = sampler;
     textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeAdvect1);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 3);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &texture, sizeof(texture));
@@ -613,7 +613,7 @@ static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
     textureBindings[2].texture = textures[TextureVelocityY].GetReadTexture();
     textureBindings[3].sampler = sampler;
     textureBindings[3].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeAdvect2);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
@@ -634,7 +634,7 @@ static void SetBnd1(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeSetBnd1);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
@@ -654,7 +654,7 @@ static void SetBnd2(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeSetBnd2);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
@@ -674,7 +674,7 @@ static void SetBnd3(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeSetBnd3);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
@@ -712,7 +712,7 @@ static void SetBnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS_3D - 1) / THREADS_3D;
+    int groups = (state.size + THREADS - 1) / THREADS;
     BindPipeline(computePass, ComputePipelineTypeSetBnd5);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
