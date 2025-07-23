@@ -21,9 +21,9 @@ void main()
     imageStore(outDivergence, id, vec4(
         -0.5f * (texelFetch(inVelocityX, id + ivec3( 1, 0, 0 ), 0).x -
                  texelFetch(inVelocityX, id + ivec3(-1, 0, 0 ), 0).x +
-                 texelFetch(inVelocityX, id + ivec3( 0, 1, 0 ), 0).x -
-                 texelFetch(inVelocityX, id + ivec3( 0,-1, 0 ), 0).x +
-                 texelFetch(inVelocityX, id + ivec3( 0, 0, 1 ), 0).x -
-                 texelFetch(inVelocityX, id + ivec3( 0, 0,-1 ), 0).x) / N));
+                 texelFetch(inVelocityY, id + ivec3( 0, 1, 0 ), 0).x -
+                 texelFetch(inVelocityY, id + ivec3( 0,-1, 0 ), 0).x +
+                 texelFetch(inVelocityZ, id + ivec3( 0, 0, 1 ), 0).x -
+                 texelFetch(inVelocityZ, id + ivec3( 0, 0,-1 ), 0).x) / N));
     imageStore(outPressure, id, vec4(0.0f));
 }

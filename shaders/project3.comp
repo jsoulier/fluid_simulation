@@ -23,13 +23,13 @@ void main()
     imageStore(outVelocityX, id, vec4(
         texelFetch(inVelocityX, id, 0).x - 0.5f * (
             texelFetch(inPressure, id + ivec3( 1, 0, 0 ), 0) -
-            texelFetch(inPressure, id + ivec3(-1, 0, 0 ), 0)) / N));
+            texelFetch(inPressure, id + ivec3(-1, 0, 0 ), 0)) * N));
     imageStore(outVelocityY, id, vec4(
         texelFetch(inVelocityY, id, 0).x - 0.5f * (
             texelFetch(inPressure, id + ivec3( 0, 1, 0 ), 0) -
-            texelFetch(inPressure, id + ivec3( 0,-1, 0 ), 0)) / N));
+            texelFetch(inPressure, id + ivec3( 0,-1, 0 ), 0)) * N));
     imageStore(outVelocityZ, id, vec4(
         texelFetch(inVelocityZ, id, 0).x - 0.5f * (
             texelFetch(inPressure, id + ivec3( 0, 0, 1 ), 0) -
-            texelFetch(inPressure, id + ivec3( 0, 0,-1 ), 0)) / N));
+            texelFetch(inPressure, id + ivec3( 0, 0,-1 ), 0)) * N));
 }

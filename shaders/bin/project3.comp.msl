@@ -24,8 +24,8 @@ kernel void main0(texture3d<float> inPressure [[texture(0)]], texture3d<float> i
         return;
     }
     uint N = uint(size.x);
-    outVelocityX.write(float4(inVelocityX.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(1, 0, 0))), 0) - inPressure.read(uint3((id + int3(-1, 0, 0))), 0)) * 0.5) / float4(float(N))), uint3(id));
-    outVelocityY.write(float4(inVelocityY.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(0, 1, 0))), 0) - inPressure.read(uint3((id + int3(0, -1, 0))), 0)) * 0.5) / float4(float(N))), uint3(id));
-    outVelocityZ.write(float4(inVelocityZ.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(0, 0, 1))), 0) - inPressure.read(uint3((id + int3(0, 0, -1))), 0)) * 0.5) / float4(float(N))), uint3(id));
+    outVelocityX.write(float4(inVelocityX.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(1, 0, 0))), 0) - inPressure.read(uint3((id + int3(-1, 0, 0))), 0)) * 0.5) * float(N)), uint3(id));
+    outVelocityY.write(float4(inVelocityY.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(0, 1, 0))), 0) - inPressure.read(uint3((id + int3(0, -1, 0))), 0)) * 0.5) * float(N)), uint3(id));
+    outVelocityZ.write(float4(inVelocityZ.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(0, 0, 1))), 0) - inPressure.read(uint3((id + int3(0, 0, -1))), 0)) * 0.5) * float(N)), uint3(id));
 }
 

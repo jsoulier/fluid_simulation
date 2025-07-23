@@ -719,17 +719,15 @@ static void SetBnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_EndGPUComputePass(computePass);
 }
 
-/* TODO: i'm not really sure what set_bnd is supposed to do. it makes the border cells
-sample the raw value (no weighting) from the neighboring cells. that's all. seems wrong */
 static void SetBnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
     /* TODO: only sides and corners are handled in the example (not edges) */
-    // SetBnd1(commandBuffer, texture, type);
-    // SetBnd2(commandBuffer, texture, type);
-    // SetBnd3(commandBuffer, texture, type);
-    // SetBnd4(commandBuffer, texture);
-    // SetBnd5(commandBuffer, texture);
-    // texture.Swap();
+    SetBnd1(commandBuffer, texture, type);
+    SetBnd2(commandBuffer, texture, type);
+    SetBnd3(commandBuffer, texture, type);
+    SetBnd4(commandBuffer, texture);
+    SetBnd5(commandBuffer, texture);
+    texture.Swap();
 }
 
 static void RenderCombined(SDL_GPUCommandBuffer* commandBuffer)

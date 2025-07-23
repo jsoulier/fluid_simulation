@@ -48,7 +48,7 @@ vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
         float z = id.z - tmp3; \
         /* TODO: what the fuck? without N -= 2, a bunch of shit breaks */ \
         N -= 2; \
-        /* TODO: shouldn't it be (N - 1) instead? is that why the previous thing is required? */ \
+        /* TODO: shouldn't it be (N - 2) instead? is that why the previous thing is required? */ \
         /* feel like there's some bugs in the Mike Ash version */ \
         if (x < 0.5f) \
         { \
