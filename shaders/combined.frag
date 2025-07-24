@@ -2,7 +2,7 @@
 
 #include "shader.glsl"
 
-layout(location = 0) in vec2 inTexcoord;
+layout(location = 0) in vec2 inTexCoord;
 layout(location = 0) out vec4 outColor;
 layout(set = 2, binding = 0) uniform sampler3D inVelocityX;
 layout(set = 2, binding = 1) uniform sampler3D inVelocityY;
@@ -24,7 +24,7 @@ layout(set = 3, binding = 2) uniform uniformCameraPosition
 void main()
 {
     ivec3 size = textureSize(inVelocityX, 0);
-    vec3 rayDirection = GetRayDirection(inverseView, inverseProj, inTexcoord);
+    vec3 rayDirection = GetRayDirection(inverseView, inverseProj, inTexCoord);
     outColor = vec4(0.0f);
     for (int i = 0; i < MaxSteps; i++)
     {
@@ -38,5 +38,5 @@ void main()
         outColor.b += abs(texelFetch(inVelocityZ, id, 0).x);
         outColor.a += texelFetch(inDensity, id, 0).x;
     }
-    outColor *= ColorScale;
+    outColor *= Scale;
 }

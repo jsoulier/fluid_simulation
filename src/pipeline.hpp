@@ -11,35 +11,20 @@ enum GraphicsPipelineType
 
 enum ComputePipelineType
 {
-    /* add to a single cell of an image */
     ComputePipelineTypeAdd1,
-    /* add to all cells of an image */
     ComputePipelineTypeAdd2,
-    /* clear an image to a value */
     ComputePipelineTypeClear,
-    /* diffusion using linear solve */
     ComputePipelineTypeDiffuse,
-    /* step 1 of projection for calculating divergence */
     ComputePipelineTypeProject1,
-    /* step 2 of projection to get pressure using linear solve on divergence  */
     ComputePipelineTypeProject2,
-    /* step 3 of projection for applying pressure */
     ComputePipelineTypeProject3,
-    /* step 1 of advection for calculating velocity change */
     ComputePipelineTypeAdvect1,
-    /* step 2 of advection for calculating density change */
     ComputePipelineTypeAdvect2,
-    /* fix z boundaries */
     ComputePipelineTypeSetBnd1,
-    /* fix y boundaries */
     ComputePipelineTypeSetBnd2,
-    /* fix z boundaries */
     ComputePipelineTypeSetBnd3,
-    /* fix corners */
     ComputePipelineTypeSetBnd4,
-    /* copy non-border cells */
     ComputePipelineTypeSetBnd5,
-    /* */
     ComputePipelineTypeCount,
 };
 

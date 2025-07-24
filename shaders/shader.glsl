@@ -3,18 +3,17 @@
 
 const float StepSize = 1;
 const int MaxSteps = 512;
-const float ColorScale = 20.0f;
+const float Scale = 50.0f;
 
-vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
+vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texCoord)
 {
-    vec4 ndc = vec4(texcoord * 2.0 - 1.0, 0.0, 1.0);
+    vec4 ndc = vec4(texCoord * 2.0f - 1.0f, 0.0f, 1.0f);
     vec4 viewRay = inverseProj * ndc;
     viewRay /= viewRay.w;
-    vec4 worldRay = inverseView * vec4(viewRay.xyz, 0.0);
+    vec4 worldRay = inverseView * vec4(viewRay.xyz, 0.0f);
     return normalize(worldRay.xyz);
 }
 
-/* modified to only read from the read image */
 #define LIN_SOLVE(id, inImage, outImage, a, c) \
     do \
     { \
@@ -29,56 +28,23 @@ vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
     } \
     while (false) \
 
-/* TODO: copied from Mike Ash. needs a refactor */
 #define ADVECT(id, outImage, inImage, inVelocityX, inVelocityY, inVelocityZ, deltaTime, size) \
     do \
     { \
-        float N = size.x; \
-        /* Jaan: scale for the velocity */ \
+        float N = size.x - 2; \
         float dtx = deltaTime * (N - 2); \
         float dty = deltaTime * (N - 2); \
         float dtz = deltaTime * (N - 2); \
-        /* Jaan: position delta for the current velocity */ \
         float tmp1 = dtx * texelFetch(inVelocityX, id, 0).x; \
         float tmp2 = dty * texelFetch(inVelocityY, id, 0).x; \
         float tmp3 = dtz * texelFetch(inVelocityZ, id, 0).x; \
-        /* Jaan: previous position according to current position and velocity */ \
-        float x = id.x - tmp1; \
-        float y = id.y - tmp2; \
-        float z = id.z - tmp3; \
-        /* TODO: what the fuck? without N -= 2, a bunch of shit breaks */ \
-        N -= 2; \
-        /* TODO: shouldn't it be (N - 2) instead? is that why the previous thing is required? */ \
-        /* feel like there's some bugs in the Mike Ash version */ \
-        if (x < 0.5f) \
-        { \
-            x = 0.5f; \
-        } \
-        if (x > N + 0.5f) \
-        { \
-            x = N + 0.5f; \
-        } \
+        float x = clamp(id.x - tmp1, 0.5f, N + 0.5f); \
+        float y = clamp(id.y - tmp2, 0.5f, N + 0.5f); \
+        float z = clamp(id.z - tmp3, 0.5f, N + 0.5f); \
         float i0 = floor(x); \
         float i1 = i0 + 1.0f; \
-        if (y < 0.5f) \
-        { \
-            y = 0.5f; \
-        } \
-        if (y > N + 0.5f) \
-        { \
-            y = N + 0.5f; \
-        } \
         float j0 = floor(y); \
         float j1 = j0 + 1.0f; \
-        if (z < 0.5f) \
-        { \
-            z = 0.5f; \
-        } \
-        if (z > N + 0.5f) \
-        { \
-            z = N + 0.5f; \
-        } \
-        /* Jaan: distance to nearest cells (basically sampling) */ \
         float k0 = floor(z); \
         float k1 = k0 + 1.0f; \
         float s1 = x - i0; \
@@ -93,8 +59,6 @@ vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
         int j1i = int(j1); \
         int k0i = int(k0); \
         int k1i = int(k1); \
-        /* Jaan: weighted average */ \
-        /* TODO: i feel like each dimension isn't applied equally */ \
         imageStore(outImage, id, vec4( \
             s0 * (t0 * (u0 * texelFetch(inImage, ivec3(i0i, j0i, k0i), 0).x + \
                         u1 * texelFetch(inImage, ivec3(i0i, j0i, k1i), 0).x) + \

@@ -44,10 +44,6 @@ void main()
         ivec3(N - 1, 1, N - 1),
         ivec3(N - 1, N - 2, N - 1)
     );
-    /* TODO: there's so many errors in their example. they use N instead of N - 2 */
-    // x[IX(0, 0, N-1)] = 0.33f * (x[IX(1, 0, N-1)]
-    //                           + x[IX(0, 1, N-1)]
-    //                           + x[IX(0, 0, N)]); /* here! */
     const ivec3 Neighbors3[8] = ivec3[]
     (
         ivec3(0, 0, 1),

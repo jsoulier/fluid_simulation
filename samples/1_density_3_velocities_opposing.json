@@ -10,7 +10,7 @@
                 63
             ],
             "texture": 5,
-            "value": 1000.0
+            "value": 3.0
         },
         {
             "position": [
@@ -19,7 +19,7 @@
                 63
             ],
             "texture": 1,
-            "value": 10.0
+            "value": 2.0
         },
         {
             "position": [
@@ -28,7 +28,7 @@
                 63
             ],
             "texture": 0,
-            "value": 10.0
+            "value": 2.0
         },
         {
             "position": [
@@ -37,7 +37,7 @@
                 1
             ],
             "texture": 2,
-            "value": 10.0
+            "value": 2.0
         }
     ],
     "viscosity": 0.16500000655651093

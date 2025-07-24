@@ -27,13 +27,13 @@ struct main0_out
 
 struct main0_in
 {
-    float2 inTexcoord [[user(locn0)]];
+    float2 inTexCoord [[user(locn0)]];
 };
 
 static inline __attribute__((always_inline))
-float3 GetRayDirection(thread const float4x4& inverseView, thread const float4x4& inverseProj, thread const float2& texcoord)
+float3 GetRayDirection(thread const float4x4& inverseView, thread const float4x4& inverseProj, thread const float2& texCoord)
 {
-    float4 ndc = float4((texcoord * 2.0) - float2(1.0), 0.0, 1.0);
+    float4 ndc = float4((texCoord * 2.0) - float2(1.0), 0.0, 1.0);
     float4 viewRay = inverseProj * ndc;
     viewRay /= float4(viewRay.w);
     float4 worldRay = inverseView * float4(viewRay.xyz, 0.0);
@@ -46,7 +46,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant uniformInverseView& 
     int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
     float4x4 param = _73.inverseView;
     float4x4 param_1 = _76.inverseProj;
-    float2 param_2 = in.inTexcoord;
+    float2 param_2 = in.inTexCoord;
     float3 rayDirection = GetRayDirection(param, param_1, param_2);
     out.outColor = float4(0.0);
     for (int i = 0; i < 512; i++)
@@ -71,7 +71,7 @@ fragment main0_out main0(main0_in in [[stage_in]], constant uniformInverseView& 
         out.outColor.z += abs(inVelocityZ.read(uint3(id), 0).x);
         out.outColor.w += inDensity.read(uint3(id), 0).x;
     }
-    out.outColor *= 20.0;
+    out.outColor *= 50.0;
     return out;
 }
 

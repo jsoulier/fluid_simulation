@@ -5,15 +5,15 @@ using namespace metal;
 
 struct main0_out
 {
-    float2 outTexcoord [[user(locn0)]];
+    float2 outTexCoord [[user(locn0)]];
     float4 gl_Position [[position]];
 };
 
 vertex main0_out main0(uint gl_VertexIndex [[vertex_id]])
 {
     main0_out out = {};
-    out.outTexcoord = float2(float((int(gl_VertexIndex) << 1) & 2), float(int(gl_VertexIndex) & 2));
-    out.gl_Position = float4((out.outTexcoord * 2.0) - float2(1.0), 0.0, 1.0);
+    out.outTexCoord = float2(float((int(gl_VertexIndex) << 1) & 2), float(int(gl_VertexIndex) & 2));
+    out.gl_Position = float4((out.outTexCoord * 2.0) - float2(1.0), 0.0, 1.0);
     return out;
 }
 

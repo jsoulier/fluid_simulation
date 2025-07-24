@@ -721,7 +721,7 @@ static void SetBnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
 
 static void SetBnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    /* TODO: only sides and corners are handled in the example (not edges) */
+    /* TODO: only sides and corners are handled in Mike Ash's example (no edges) */
     SetBnd1(commandBuffer, texture, type);
     SetBnd2(commandBuffer, texture, type);
     SetBnd3(commandBuffer, texture, type);
@@ -861,7 +861,7 @@ static void Update()
     }
     if (!swapchainTexture || !width || !height)
     {
-        /* NOTE: not an error */
+        /* NOTE: not an error. can happen on minimize */
         SDL_CancelGPUCommandBuffer(commandBuffer);
         return;
     }
@@ -919,7 +919,6 @@ static void Update()
     Letterbox(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
     SDL_SubmitGPUCommandBuffer(commandBuffer);
-    SDL_WaitForGPUIdle(device);
 }
 
 int main(int argc, char** argv)
