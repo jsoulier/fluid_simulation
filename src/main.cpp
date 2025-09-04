@@ -141,6 +141,7 @@ static glm::mat4 inverseProj;
 static glm::mat4 viewProj;
 static int texture = TextureCount;
 static bool focused;
+static bool hovered;
 static State state;
 static std::mutex mutex;
 
@@ -461,6 +462,7 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     }
     ImGui::SeparatorText("Spawners");
     UpdateSpawners(commandBuffer);
+    hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
     focused = ImGui::IsWindowFocused();
     ImGui::End();
     ImGui::Render();
@@ -966,10 +968,13 @@ int main(int argc, char** argv)
             switch (event.type)
             {
             case SDL_EVENT_MOUSE_WHEEL:
-                distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
+                if (!hovered)
+                {
+                    distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
+                }
                 break;
             case SDL_EVENT_MOUSE_MOTION:
-                if (!focused && event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
+                if (!focused && !hovered && event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
                     yaw += event.motion.xrel * Pan * dt;
