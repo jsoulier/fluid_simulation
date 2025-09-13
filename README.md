@@ -1,6 +1,8 @@
 # Fluid Simulation
 
-https://github.com/user-attachments/assets/ce24a876-5390-4c01-824d-d55dd9501eed
+https://github.com/user-attachments/assets/d82464e1-56ae-4e51-ac25-b4100dcfa2e9
+
+https://github.com/user-attachments/assets/e7a1acaa-dd44-4f5b-83f1-5cf88bdfb0b2
 
 Implementation of [Fluid Simulation for Dummies](https://mikeash.com/pyblog/fluid-simulation-for-dummies.html) using the new SDL3 GPU API with compute shaders
 

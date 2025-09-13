@@ -1,0 +1,2 @@
+*.comp linguist-language=GLSL
+lib/** linguist-vendored
