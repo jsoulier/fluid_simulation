@@ -11,8 +11,6 @@ Implementation of [Fluid Simulation for Dummies](https://mikeash.com/pyblog/flui
 
 #### Windows
 
-Install the [Vulkan SDK](https://www.lunarg.com/vulkan-sdk/) for glslc
-
 ```bash
 git clone https://github.com/jsoulier/fluid_simulation --recurse-submodules
 cd fluid_simulation
@@ -40,4 +38,4 @@ cd bin
 #### Shaders
 
 Shaders are prebuilt.
-To build locally, install [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross) to your path
+To build locally, install [glslc](https://github.com/google/shaderc) and [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross) to your path
