@@ -5,7 +5,7 @@
 class ReadWriteTexture
 {
 public:
-    ReadWriteTexture() : textures{}, readIndex{} {}
+    ReadWriteTexture() : Textures{}, ReadIndex{} {}
     bool Create(SDL_GPUDevice* device, int size);
     void Free(SDL_GPUDevice* device);
     SDL_GPUComputePass* BeginReadPass(SDL_GPUCommandBuffer* commandBuffer);
@@ -15,6 +15,6 @@ public:
     SDL_GPUTexture* GetWriteTexture();
 
 private:
-    SDL_GPUTexture* textures[2];
-    int readIndex;
+    SDL_GPUTexture* Textures[2];
+    int ReadIndex;
 };

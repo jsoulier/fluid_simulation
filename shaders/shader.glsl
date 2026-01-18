@@ -1,13 +1,13 @@
 #ifndef SHADER_GLSL
 #define SHADER_GLSL
 
-const float StepSize = 1;
-const int MaxSteps = 512;
-const float Scale = 50.0f;
+const float kStepSize = 1;
+const int kMaxSteps = 512;
+const float kScale = 50.0f;
 
-vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texCoord)
+vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
 {
-    vec4 ndc = vec4(texCoord * 2.0f - 1.0f, 0.0f, 1.0f);
+    vec4 ndc = vec4(texcoord * 2.0f - 1.0f, 0.0f, 1.0f);
     vec4 viewRay = inverseProj * ndc;
     viewRay /= viewRay.w;
     vec4 worldRay = inverseView * vec4(viewRay.xyz, 0.0f);

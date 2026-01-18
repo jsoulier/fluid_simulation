@@ -1,44 +1,44 @@
 {
-    "diffusion": 0.08799999952316284,
-    "iterations": 3,
-    "size": 128,
-    "spawners": [
+    "Diffusion": 0.08799999952316284,
+    "Iterations": 3,
+    "Size": 128,
+    "Spawners": [
         {
-            "position": [
+            "Position": [
                 63,
                 63,
                 63
             ],
-            "texture": 5,
-            "value": 3.0
+            "Texture": 5,
+            "Value": 3.0
         },
         {
-            "position": [
+            "Position": [
                 63,
                 1,
                 63
             ],
-            "texture": 1,
-            "value": 2.0
+            "Texture": 1,
+            "Value": 2.0
         },
         {
-            "position": [
+            "Position": [
                 1,
                 63,
                 63
             ],
-            "texture": 0,
-            "value": 2.0
+            "Texture": 0,
+            "Value": 2.0
         },
         {
-            "position": [
+            "Position": [
                 63,
                 63,
                 1
             ],
-            "texture": 2,
-            "value": 2.0
+            "Texture": 2,
+            "Value": 2.0
         }
     ],
-    "viscosity": 0.16500000655651093
+    "Viscosity": 0.16500000655651093
 }

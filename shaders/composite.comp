@@ -1,0 +1,52 @@
+#version 450
+
+#include "shader.glsl"
+#include "config.hpp"
+
+layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = THREADS) in;
+layout(set = 0, binding = 0) uniform sampler3D inVelocityX;
+layout(set = 0, binding = 1) uniform sampler3D inVelocityY;
+layout(set = 0, binding = 2) uniform sampler3D inVelocityZ;
+layout(set = 0, binding = 3) uniform sampler3D inDensity;
+layout(set = 1, binding = 0, rgba32f) uniform writeonly image2D outColor;
+layout(set = 2, binding = 0) uniform uniformInverseView
+{
+    mat4 inverseView;
+};
+layout(set = 2, binding = 1) uniform uniformInverseProj
+{
+    mat4 inverseProj;
+};
+layout(set = 2, binding = 2) uniform uniformCameraPosition
+{
+    vec3 cameraPosition;
+};
+
+void main()
+{
+    ivec3 size = textureSize(inVelocityX, 0);
+    ivec2 imageSize = imageSize(outColor);
+    ivec2 id = ivec2(gl_GlobalInvocationID.xy);
+    if (any(greaterThanEqual(id, imageSize - 1)) || any(lessThanEqual(id, ivec2(0))))
+    {
+        return;
+    }
+    vec2 texcoord = vec2(id) / vec2(imageSize.xy);
+    texcoord.y = 1.0f - texcoord.y;
+    vec3 rayDirection = GetRayDirection(inverseView, inverseProj, texcoord);
+    vec4 result = vec4(0.0f);
+    for (int i = 0; i < kMaxSteps; i++)
+    {
+        ivec3 cell = ivec3(cameraPosition + rayDirection * i * kStepSize);
+        if (any(greaterThanEqual(cell, size)) || any(lessThan(cell, ivec3(0))))
+        {
+            continue;
+        }
+        result.r += abs(texelFetch(inVelocityX, cell, 0).x);
+        result.g += abs(texelFetch(inVelocityY, cell, 0).x);
+        result.b += abs(texelFetch(inVelocityZ, cell, 0).x);
+        result.a += texelFetch(inDensity, cell, 0).x;
+    }
+    result *= kScale;
+    imageStore(outColor, id, result);
+}

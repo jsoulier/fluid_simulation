@@ -9,7 +9,7 @@
             "args": [
                 "${workspaceFolder}/samples/8.json"
             ],
-            "cwd": "${workspaceFolder}/build/bin",
+            "cwd": "${workspaceFolder}",
             "preLaunchTask": "CMake: build"
         },
     ]

@@ -21,75 +21,19 @@
 #include <vector>
 
 #include "config.hpp"
-#include "debug_group.hpp"
-#include "pipeline.hpp"
-#include "rw_texture.hpp"
-#include "shader.hpp"
+#include "helpers.hpp"
+#include "texture.hpp"
 
-enum Texture
+enum TextureType
 {
-    TextureVelocityX,
-    TextureVelocityY,
-    TextureVelocityZ,
-    TexturePressure,
-    TextureDivergence,
-    TextureDensity,
-    TextureCount,
+    TextureTypeVelocityX,
+    TextureTypeVelocityY,
+    TextureTypeVelocityZ,
+    TextureTypePressure,
+    TextureTypeDivergence,
+    TextureTypeDensity,
+    TextureTypeCount,
 };
-
-struct Spawner
-{
-    Texture texture;
-    int position[3];
-    float value;
-};
-
-void to_json(nlohmann::json& json, const Spawner& spawner)
-{
-    json["texture"] = spawner.texture;
-    json["position"] = spawner.position;
-    json["value"] = spawner.value;
-}
-
-void from_json(const nlohmann::json& json, Spawner& spawner)
-{
-    spawner.texture = json["texture"];
-    spawner.position[0] = json["position"][0];
-    spawner.position[1] = json["position"][1];
-    spawner.position[2] = json["position"][2];
-    spawner.value = json["value"];
-}
-
-struct State
-{
-    int size = 128;
-    int iterations = 5;
-    float diffusion = 0.01f;
-    float viscosity = 0.01f;
-    std::vector<Spawner> spawners;
-};
-
-void to_json(nlohmann::json& json, const State& state)
-{
-    json["size"] = state.size;
-    json["iterations"] = state.iterations;
-    json["diffusion"] = state.diffusion;
-    json["viscosity"] = state.viscosity;
-    json["spawners"] = state.spawners;
-}
-
-void from_json(const nlohmann::json& json, State& state)
-{
-    state.size = json["size"];
-    state.iterations = json["iterations"];
-    state.diffusion = json["diffusion"];
-    state.viscosity = json["viscosity"];
-    state.spawners = json["spawners"];
-}
-
-static_assert(TextureVelocityX == 0);
-static_assert(TextureVelocityY == 1);
-static_assert(TextureVelocityZ == 2);
 
 static constexpr const char* Textures[] =
 {
@@ -102,44 +46,86 @@ static constexpr const char* Textures[] =
     "Combined",
 };
 
-static constexpr Texture Spawners[] =
+static constexpr TextureType Spawners[] =
 {
-    TextureVelocityX,
-    TextureVelocityY,
-    TextureVelocityZ,
-    TextureDensity
+    TextureTypeVelocityX,
+    TextureTypeVelocityY,
+    TextureTypeVelocityZ,
+    TextureTypeDensity
 };
 
-static constexpr int Width = 960;
-static constexpr int Height = 720;
-static constexpr float Zoom = 1.0f;
-static constexpr float Pan = 0.0002f;
-static constexpr float Fov = glm::radians(60.0f);
-static constexpr float Near = 0.1f;
-static constexpr float Far = 1000.0f;
+struct Spawner
+{
+    TextureType Texture;
+    int Position[3];
+    float Value;
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(Spawner, Texture, Position, Value)
+};
+
+struct State
+{
+    int Size = 128;
+    int Iterations = 5;
+    float Diffusion = 0.01f;
+    float Viscosity = 0.01f;
+    std::vector<Spawner> Spawners;
+
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(State, Size, Iterations, Diffusion, Viscosity, Spawners)
+};
+
+enum PipelineType
+{
+    PipelineTypeAdd1,
+    PipelineTypeAdd2,
+    PipelineTypeClear,
+    PipelineTypeDiffuse,
+    PipelineTypeProject1,
+    PipelineTypeProject2,
+    PipelineTypeProject3,
+    PipelineTypeAdvect1,
+    PipelineTypeAdvect2,
+    PipelineTypeBnd1,
+    PipelineTypeBnd2,
+    PipelineTypeBnd3,
+    PipelineTypeBnd4,
+    PipelineTypeBnd5,
+    PipelineTypeComposite,
+    PipelineTypeSingle,
+    PipelineTypeCount,
+};
+
+static constexpr int kWidth = 480;
+static constexpr int kHeight = 360;
+static constexpr float kZoom = 20.0f;
+static constexpr float kPan = 0.005f;
+static constexpr float kFov = glm::radians(60.0f);
+static constexpr float kNear = 0.1f;
+static constexpr float kFar = 1000.0f;
+static constexpr float kCooldown = 16.0f;
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
+static SDL_GPUComputePipeline* pipelines[PipelineTypeCount];
 static SDL_GPUTexture* colorTexture;
 static uint32_t width;
 static uint32_t height;
-static ReadWriteTexture textures[TextureCount];
+static ReadWriteTexture textures[TextureTypeCount];
 static SDL_GPUSampler* sampler;
-static float dt;
-static int delay = 16;
+static float speed = 16.0f;
 static int cooldown;
 static uint64_t time1;
 static uint64_t time2;
 static float pitch;
 static float yaw;
-static float distance = 200;
+static float distance = 200.0f;
 static glm::vec3 position;
 static glm::mat4 view;
 static glm::mat4 proj;
 static glm::mat4 inverseView;
 static glm::mat4 inverseProj;
 static glm::mat4 viewProj;
-static int texture = TextureCount;
+static int texture = TextureTypeCount;
 static bool focused;
 static bool hovered;
 static State state;
@@ -160,17 +146,10 @@ static bool Init()
         SDL_Log("Failed to create window: %s", SDL_GetError());
         return false;
     }
-#if defined(SDL_PLATFORM_WIN32)
-/* NOTE: forcing Vulkan when debugging on Windows since debug groups are broken on D3D12 */
 #ifndef NDEBUG
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, nullptr);
+    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL, true, nullptr);
 #else
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_DXIL, true, nullptr);
-#endif
-#elif defined(SDL_PLATFORM_APPLE)
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_MSL, true, nullptr);
-#else
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, nullptr);
+    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL, false, nullptr);
 #endif
     if (!device)
     {
@@ -214,17 +193,46 @@ static bool CreateTextures()
 {
     SDL_GPUTextureCreateInfo info{};
     info.type = SDL_GPU_TEXTURETYPE_2D;
-    info.width = Width;
-    info.height = Height;
+    info.width = kWidth;
+    info.height = kHeight;
     info.layer_count_or_depth = 1;
     info.num_levels = 1;
-    info.format = SDL_GetGPUSwapchainTextureFormat(device, window);
-    info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    info.usage = SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_TEXTUREUSAGE_SAMPLER;
     colorTexture = SDL_CreateGPUTexture(device, &info);
     if (!colorTexture)
     {
         SDL_Log("Failed to create texture: %s", SDL_GetError());
         return false;
+    }
+    return true;
+}
+
+bool CreatePipelines()
+{
+    pipelines[PipelineTypeAdd1] = LoadComputePipeline(device, "add1.comp");
+    pipelines[PipelineTypeAdd2] = LoadComputePipeline(device, "add2.comp");
+    pipelines[PipelineTypeClear] = LoadComputePipeline(device, "clear.comp");
+    pipelines[PipelineTypeDiffuse] = LoadComputePipeline(device, "diffuse.comp");
+    pipelines[PipelineTypeProject1] = LoadComputePipeline(device, "project1.comp");
+    pipelines[PipelineTypeProject2] = LoadComputePipeline(device, "project2.comp");
+    pipelines[PipelineTypeProject3] = LoadComputePipeline(device, "project3.comp");
+    pipelines[PipelineTypeAdvect1] = LoadComputePipeline(device, "advect1.comp");
+    pipelines[PipelineTypeAdvect2] = LoadComputePipeline(device, "advect2.comp");
+    pipelines[PipelineTypeBnd1] = LoadComputePipeline(device, "bnd1.comp");
+    pipelines[PipelineTypeBnd2] = LoadComputePipeline(device, "bnd2.comp");
+    pipelines[PipelineTypeBnd3] = LoadComputePipeline(device, "bnd3.comp");
+    pipelines[PipelineTypeBnd4] = LoadComputePipeline(device, "bnd4.comp");
+    pipelines[PipelineTypeBnd5] = LoadComputePipeline(device, "bnd5.comp");
+    pipelines[PipelineTypeComposite] = LoadComputePipeline(device, "composite.comp");
+    pipelines[PipelineTypeSingle] = LoadComputePipeline(device, "single.comp");
+    for (int i = PipelineTypeCount - 1; i >= 0; i--)
+    {
+        if (!pipelines[i])
+        {
+            SDL_Log("Failed to create compute pipeline: %d", i);
+            return false;
+        }
     }
     return true;
 }
@@ -235,43 +243,43 @@ static void UpdateViewProj()
     vector.x = std::cos(pitch) * std::cos(yaw);
     vector.y = std::sin(pitch);
     vector.z = std::cos(pitch) * std::sin(yaw);
-    float ratio = static_cast<float>(Width) / Height;
-    glm::vec3 center = glm::vec3(state.size / 2);
+    float ratio = static_cast<float>(kWidth) / kHeight;
+    glm::vec3 center = glm::vec3(state.Size / 2);
     position = center - vector * distance;
     view = glm::lookAt(position, position + vector, {0.0f, 1.0f, 0.0f});
-    proj = glm::perspective(Fov, ratio, Near, Far);
+    proj = glm::perspective(kFov, ratio, kNear, kFar);
     inverseView = glm::inverse(view);
     inverseProj = glm::inverse(proj);
     viewProj = proj * view;
 }
 
-static void Add1(SDL_GPUCommandBuffer* commandBuffer, Texture texture, const glm::ivec3& position, float value)
+static void Add1(SDL_GPUCommandBuffer* commandBuffer, TextureType texture, const glm::ivec3& position, float value)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = textures[texture].BeginReadPass(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    BindPipeline(computePass, ComputePipelineTypeAdd1);
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeAdd1]);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &position, sizeof(position));
     SDL_PushGPUComputeUniformData(commandBuffer, 1, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, 1, 1, 1);
     SDL_EndGPUComputePass(computePass);
 }
 
-static void Add2(SDL_GPUCommandBuffer* commandBuffer, Texture texture, float value)
+static void Add2(SDL_GPUCommandBuffer* commandBuffer, TextureType texture, float value)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = textures[texture].BeginReadPass(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeAdd2);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeAdd2]);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
@@ -279,15 +287,15 @@ static void Add2(SDL_GPUCommandBuffer* commandBuffer, Texture texture, float val
 
 static void Clear(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float value = 0.0f)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeClear);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeClear]);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &value, sizeof(value));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
@@ -301,9 +309,9 @@ static bool CreateCells()
         SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
         return false;
     }
-    for (int i = 0; i < TextureCount; i++)
+    for (int i = 0; i < TextureTypeCount; i++)
     {
-        if (!textures[i].Create(device, state.size))
+        if (!textures[i].Create(device, state.Size))
         {
             SDL_Log("Failed to create texture: %d", i);
             return false;
@@ -370,23 +378,23 @@ static void LoadCallback(void *userdata, const char* const* filelist, int filter
 static void UpdateSpawners(SDL_GPUCommandBuffer* commandBuffer)
 {
     std::vector<int> removes;
-    for (int i = 0; i < state.spawners.size(); i++)
+    for (int i = 0; i < state.Spawners.size(); i++)
     {
         std::string removeId = std::format("Remove##remove{}", i);
         std::string positionId = std::format("##position{}", i);
         std::string valueId = std::format("##value{}", i);
         std::string textureId = std::format("##texture{}", i);
-        Spawner& spawner = state.spawners[i];
-        ImGui::SliderInt3(positionId.data(), spawner.position, 1, state.size - 2);
-        ImGui::DragFloat(valueId.data(), &spawner.value, 1.0f);
-        if (ImGui::BeginCombo(textureId.data(), Textures[spawner.texture]))
+        Spawner& spawner = state.Spawners[i];
+        ImGui::SliderInt3(positionId.data(), spawner.Position, 1, state.Size - 2);
+        ImGui::DragFloat(valueId.data(), &spawner.Value, 1.0f);
+        if (ImGui::BeginCombo(textureId.data(), Textures[spawner.Texture]))
         {
             for (int j = 0; j < SDL_arraysize(Spawners); j++)
             {
-                bool isSelected = spawner.texture == j;
+                bool isSelected = spawner.Texture == j;
                 if (ImGui::Selectable(Textures[Spawners[j]], isSelected))
                 {
-                    spawner.texture = Spawners[j];
+                    spawner.Texture = Spawners[j];
                 }
                 if (isSelected)
                 {
@@ -399,32 +407,32 @@ static void UpdateSpawners(SDL_GPUCommandBuffer* commandBuffer)
         {
             removes.push_back(i);
         }
-        const int x = spawner.position[0];
-        const int y = spawner.position[1];
-        const int z = spawner.position[2];
-        Add1(commandBuffer, spawner.texture, {x, y, z}, spawner.value);
+        int x = spawner.Position[0];
+        int y = spawner.Position[1];
+        int z = spawner.Position[2];
+        Add1(commandBuffer, spawner.Texture, {x, y, z}, spawner.Value);
         ImGui::Separator();
     }
     for (auto it = removes.rbegin(); it != removes.rend(); it++)
     {
-        state.spawners.erase(state.spawners.begin() + *it);
+        state.Spawners.erase(state.Spawners.begin() + *it);
     }
     if (ImGui::Button("Add##Spawner"))
     {
         Spawner spawner{};
-        spawner.texture = TextureDensity;
-        spawner.value = 1.0f;
-        int center = state.size / 2 - 1;
-        spawner.position[0] = center;
-        spawner.position[1] = center;
-        spawner.position[2] = center;
-        state.spawners.push_back(spawner);
+        spawner.Texture = TextureTypeDensity;
+        spawner.Value = 1.0f;
+        int center = state.Size / 2 - 1;
+        spawner.Position[0] = center;
+        spawner.Position[1] = center;
+        spawner.Position[2] = center;
+        state.Spawners.push_back(spawner);
     }
 }
 
 static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     ImGuiIO& io = ImGui::GetIO();
     io.DisplaySize.x = width;
     io.DisplaySize.y = height;
@@ -447,11 +455,11 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
         CreateCells();
     }
     ImGui::SeparatorText("Settings");
-    ImGui::SliderInt("Delay", &delay, 0, 1000);
-    ImGui::SliderInt("Iterations", &state.iterations, 1, 50);
-    ImGui::SliderFloat("Diffusion", &state.diffusion, 0.0f, 1.0f);
-    ImGui::SliderFloat("Viscosity", &state.viscosity, 0.0f, 1.0f);
-    if (ImGui::SliderInt("Size", &state.size, 16, 256))
+    ImGui::SliderFloat("Speed", &speed, 0.0f, 64.0f);
+    ImGui::SliderInt("Iterations", &state.Iterations, 1, 50);
+    ImGui::SliderFloat("Diffusion", &state.Diffusion, 0.0f, 1.0f);
+    ImGui::SliderFloat("Viscosity", &state.Viscosity, 0.0f, 1.0f);
+    if (ImGui::SliderInt("Size", &state.Size, 16, 256))
     {
         CreateCells();
     }
@@ -471,7 +479,7 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
 
 static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, float diffusion)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -481,10 +489,10 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeDiffuse);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeDiffuse]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
-    SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &speed, sizeof(speed));
     SDL_PushGPUComputeUniformData(commandBuffer, 1, &diffusion, sizeof(diffusion));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
@@ -493,10 +501,10 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
 
 static void Project1(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUStorageTextureReadWriteBinding readWriteTextureBindings[2]{};
-    readWriteTextureBindings[0].texture = textures[TexturePressure].GetWriteTexture();
-    readWriteTextureBindings[1].texture = textures[TextureDivergence].GetWriteTexture();
+    readWriteTextureBindings[0].texture = textures[TextureTypePressure].GetWriteTexture();
+    readWriteTextureBindings[1].texture = textures[TextureTypeDivergence].GetWriteTexture();
     SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, readWriteTextureBindings, 2, nullptr, 0);
     if (!computePass)
     {
@@ -505,24 +513,24 @@ static void Project1(SDL_GPUCommandBuffer* commandBuffer)
     }
     SDL_GPUTextureSamplerBinding textureBindings[3]{};
     textureBindings[0].sampler = sampler;
-    textureBindings[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[0].texture = textures[TextureTypeVelocityX].GetReadTexture();
     textureBindings[1].sampler = sampler;
-    textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[1].texture = textures[TextureTypeVelocityY].GetReadTexture();
     textureBindings[2].sampler = sampler;
-    textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeProject1);
+    textureBindings[2].texture = textures[TextureTypeVelocityZ].GetReadTexture();
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeProject1]);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 3);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
-    textures[TexturePressure].Swap();
-    textures[TextureDivergence].Swap();
+    textures[TextureTypePressure].Swap();
+    textures[TextureTypeDivergence].Swap();
 }
 
 static void Project2(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
-    SDL_GPUComputePass* computePass = textures[TexturePressure].BeginWritePass(commandBuffer);
+    DebugGroup(commandBuffer);
+    SDL_GPUComputePass* computePass = textures[TextureTypePressure].BeginWritePass(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
@@ -530,22 +538,22 @@ static void Project2(SDL_GPUCommandBuffer* commandBuffer)
     }
     SDL_GPUTextureSamplerBinding textureBinding{};
     textureBinding.sampler = sampler;
-    textureBinding.texture = textures[TextureDivergence].GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeProject2);
+    textureBinding.texture = textures[TextureTypeDivergence].GetReadTexture();
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeProject2]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBinding, 1);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
-    textures[TexturePressure].Swap();
+    textures[TextureTypePressure].Swap();
 }
 
 static void Project3(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUStorageTextureReadWriteBinding readWriteTextureBindings[3]{};
-    readWriteTextureBindings[0].texture = textures[TextureVelocityX].GetWriteTexture();
-    readWriteTextureBindings[1].texture = textures[TextureVelocityY].GetWriteTexture();
-    readWriteTextureBindings[2].texture = textures[TextureVelocityZ].GetWriteTexture();
+    readWriteTextureBindings[0].texture = textures[TextureTypeVelocityX].GetWriteTexture();
+    readWriteTextureBindings[1].texture = textures[TextureTypeVelocityY].GetWriteTexture();
+    readWriteTextureBindings[2].texture = textures[TextureTypeVelocityZ].GetWriteTexture();
     SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, readWriteTextureBindings, 3, nullptr, 0);
     if (!computePass)
     {
@@ -554,26 +562,26 @@ static void Project3(SDL_GPUCommandBuffer* commandBuffer)
     }
     SDL_GPUTextureSamplerBinding textureBindings[4]{};
     textureBindings[0].sampler = sampler;
-    textureBindings[0].texture = textures[TexturePressure].GetReadTexture();
+    textureBindings[0].texture = textures[TextureTypePressure].GetReadTexture();
     textureBindings[1].sampler = sampler;
-    textureBindings[1].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[1].texture = textures[TextureTypeVelocityX].GetReadTexture();
     textureBindings[2].sampler = sampler;
-    textureBindings[2].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[2].texture = textures[TextureTypeVelocityY].GetReadTexture();
     textureBindings[3].sampler = sampler;
-    textureBindings[3].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeProject3);
+    textureBindings[3].texture = textures[TextureTypeVelocityZ].GetReadTexture();
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeProject3]);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
-    textures[TextureVelocityX].Swap();
-    textures[TextureVelocityY].Swap();
-    textures[TextureVelocityZ].Swap();
+    textures[TextureTypeVelocityX].Swap();
+    textures[TextureTypeVelocityY].Swap();
+    textures[TextureTypeVelocityZ].Swap();
 }
 
-static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
+static void Advect1(SDL_GPUCommandBuffer* commandBuffer, TextureType texture)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     assert(texture == 0 || texture == 1 || texture == 2);
     SDL_GPUComputePass* computePass = textures[texture].BeginWritePass(commandBuffer);
     if (!computePass)
@@ -583,24 +591,24 @@ static void Advect1(SDL_GPUCommandBuffer* commandBuffer, Texture texture)
     }
     SDL_GPUTextureSamplerBinding textureBindings[3]{};
     textureBindings[0].sampler = sampler;
-    textureBindings[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[0].texture = textures[TextureTypeVelocityX].GetReadTexture();
     textureBindings[1].sampler = sampler;
-    textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[1].texture = textures[TextureTypeVelocityY].GetReadTexture();
     textureBindings[2].sampler = sampler;
-    textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeAdvect1);
+    textureBindings[2].texture = textures[TextureTypeVelocityZ].GetReadTexture();
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeAdvect1]);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 3);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &texture, sizeof(texture));
-    SDL_PushGPUComputeUniformData(commandBuffer, 1, &dt, sizeof(dt));
+    SDL_PushGPUComputeUniformData(commandBuffer, 1, &speed, sizeof(speed));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
 }
 
 static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
-    SDL_GPUComputePass* computePass = textures[TextureDensity].BeginWritePass(commandBuffer);
+    DebugGroup(commandBuffer);
+    SDL_GPUComputePass* computePass = textures[TextureTypeDensity].BeginWritePass(commandBuffer);
     if (!computePass)
     {
         SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
@@ -608,25 +616,25 @@ static void Advect2(SDL_GPUCommandBuffer* commandBuffer)
     }
     SDL_GPUTextureSamplerBinding textureBindings[4]{};
     textureBindings[0].sampler = sampler;
-    textureBindings[0].texture = textures[TextureDensity].GetReadTexture();
+    textureBindings[0].texture = textures[TextureTypeDensity].GetReadTexture();
     textureBindings[1].sampler = sampler;
-    textureBindings[1].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[1].texture = textures[TextureTypeVelocityX].GetReadTexture();
     textureBindings[2].sampler = sampler;
-    textureBindings[2].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[2].texture = textures[TextureTypeVelocityY].GetReadTexture();
     textureBindings[3].sampler = sampler;
-    textureBindings[3].texture = textures[TextureVelocityZ].GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeAdvect2);
+    textureBindings[3].texture = textures[TextureTypeVelocityZ].GetReadTexture();
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeAdvect2]);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
-    SDL_PushGPUComputeUniformData(commandBuffer, 0, &dt, sizeof(dt));
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &speed, sizeof(speed));
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
-    textures[TextureDensity].Swap();
+    textures[TextureTypeDensity].Swap();
 }
 
 static void Bnd1(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -636,8 +644,8 @@ static void Bnd1(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture,
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeBnd1);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeBnd1]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
     SDL_DispatchGPUCompute(computePass, groups, groups, 2);
@@ -646,7 +654,7 @@ static void Bnd1(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture,
 
 static void Bnd2(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -656,8 +664,8 @@ static void Bnd2(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture,
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeBnd2);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeBnd2]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
     SDL_DispatchGPUCompute(computePass, groups, 2, groups);
@@ -666,7 +674,7 @@ static void Bnd2(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture,
 
 static void Bnd3(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -676,8 +684,8 @@ static void Bnd3(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture,
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeBnd3);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeBnd3]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &type, sizeof(type));
     SDL_DispatchGPUCompute(computePass, 2, groups, groups);
@@ -686,7 +694,7 @@ static void Bnd3(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture,
 
 static void Bnd4(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -696,7 +704,7 @@ static void Bnd4(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    BindPipeline(computePass, ComputePipelineTypeBnd4);
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeBnd4]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_DispatchGPUCompute(computePass, 1, 1, 1);
     SDL_EndGPUComputePass(computePass);
@@ -704,7 +712,7 @@ static void Bnd4(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 
 static void Bnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUComputePass* computePass = texture.BeginWritePass(commandBuffer);
     if (!computePass)
     {
@@ -714,8 +722,8 @@ static void Bnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
     SDL_GPUTextureSamplerBinding textureBindings{};
     textureBindings.sampler = sampler;
     textureBindings.texture = texture.GetReadTexture();
-    int groups = (state.size + THREADS - 1) / THREADS;
-    BindPipeline(computePass, ComputePipelineTypeBnd5);
+    int groups = (state.Size + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeBnd5]);
     SDL_BindGPUComputeSamplers(computePass, 0, &textureBindings, 1);
     SDL_DispatchGPUCompute(computePass, groups, groups, groups);
     SDL_EndGPUComputePass(computePass);
@@ -723,7 +731,6 @@ static void Bnd5(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture)
 
 static void Bnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, int type)
 {
-    /* TODO: only sides and corners are handled in Mike Ash's example (no edges) */
     Bnd1(commandBuffer, texture, type);
     Bnd2(commandBuffer, texture, type);
     Bnd3(commandBuffer, texture, type);
@@ -732,67 +739,67 @@ static void Bnd(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& texture, 
     texture.Swap();
 }
 
-static void RenderCombined(SDL_GPUCommandBuffer* commandBuffer)
+static void RenderComposite(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
-    SDL_GPUColorTargetInfo colorInfo{};
-    colorInfo.texture = colorTexture;
-    colorInfo.load_op = SDL_GPU_LOADOP_CLEAR;
-    colorInfo.store_op = SDL_GPU_STOREOP_STORE;
-    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, nullptr);
-    if (!renderPass)
+    DebugGroup(commandBuffer);
+    SDL_GPUStorageTextureReadWriteBinding colorBinding{};
+    colorBinding.texture = colorTexture;
+    SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &colorBinding, 1, nullptr, 0);
+    if (!computePass)
     {
-        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
     SDL_GPUTextureSamplerBinding textureBindings[4]{};
     textureBindings[0].sampler = sampler;
-    textureBindings[0].texture = textures[TextureVelocityX].GetReadTexture();
+    textureBindings[0].texture = textures[TextureTypeVelocityX].GetReadTexture();
     textureBindings[1].sampler = sampler;
-    textureBindings[1].texture = textures[TextureVelocityY].GetReadTexture();
+    textureBindings[1].texture = textures[TextureTypeVelocityY].GetReadTexture();
     textureBindings[2].sampler = sampler;
-    textureBindings[2].texture = textures[TextureVelocityZ].GetReadTexture();
+    textureBindings[2].texture = textures[TextureTypeVelocityZ].GetReadTexture();
     textureBindings[3].sampler = sampler;
-    textureBindings[3].texture = textures[TextureDensity].GetReadTexture();
-    BindPipeline(renderPass, GraphicsPipelineTypeCombined);
-    SDL_BindGPUFragmentSamplers(renderPass, 0, textureBindings, 4);
-    SDL_PushGPUFragmentUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
-    SDL_PushGPUFragmentUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
-    SDL_PushGPUFragmentUniformData(commandBuffer, 2, &position, sizeof(position));
-    SDL_DrawGPUPrimitives(renderPass, 4, 1, 0, 0);
-    SDL_EndGPURenderPass(renderPass);
+    textureBindings[3].texture = textures[TextureTypeDensity].GetReadTexture();
+    int groupsX = (kWidth + THREADS - 1) / THREADS;
+    int groupsY = (kHeight + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeComposite]);
+    SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, 4);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
+    SDL_PushGPUComputeUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
+    SDL_PushGPUComputeUniformData(commandBuffer, 2, &position, sizeof(position));
+    SDL_DispatchGPUCompute(computePass, groupsX, groupsY, 1);
+    SDL_EndGPUComputePass(computePass);
 }
 
-static void RenderDebug(SDL_GPUCommandBuffer* commandBuffer)
+static void RenderSingle(SDL_GPUCommandBuffer* commandBuffer)
 {
-    DEBUG_GROUP(device, commandBuffer);
-    SDL_GPUColorTargetInfo colorInfo{};
-    colorInfo.texture = colorTexture;
-    colorInfo.load_op = SDL_GPU_LOADOP_CLEAR;
-    colorInfo.store_op = SDL_GPU_STOREOP_STORE;
-    SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &colorInfo, 1, nullptr);
-    if (!renderPass)
+    DebugGroup(commandBuffer);
+    SDL_GPUStorageTextureReadWriteBinding colorBinding{};
+    colorBinding.texture = colorTexture;
+    SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, &colorBinding, 1, nullptr, 0);
+    if (!computePass)
     {
-        SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
         return;
     }
     SDL_GPUTextureSamplerBinding textureBinding{};
     textureBinding.sampler = sampler;
     textureBinding.texture = textures[texture].GetReadTexture();
-    BindPipeline(renderPass, GraphicsPipelineTypeDebug);
-    SDL_BindGPUFragmentSamplers(renderPass, 0, &textureBinding, 1);
-    SDL_PushGPUFragmentUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
-    SDL_PushGPUFragmentUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
-    SDL_PushGPUFragmentUniformData(commandBuffer, 2, &position, sizeof(position));
-    SDL_DrawGPUPrimitives(renderPass, 4, 1, 0, 0);
-    SDL_EndGPURenderPass(renderPass);
+    int groupsX = (kWidth + THREADS - 1) / THREADS;
+    int groupsY = (kHeight + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeSingle]);
+    SDL_BindGPUComputeSamplers(computePass, 0, &textureBinding, 1);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &inverseView, sizeof(inverseView));
+    SDL_PushGPUComputeUniformData(commandBuffer, 1, &inverseProj, sizeof(inverseProj));
+    SDL_PushGPUComputeUniformData(commandBuffer, 2, &position, sizeof(position));
+    SDL_DispatchGPUCompute(computePass, groupsX, groupsY, 1);
+    SDL_EndGPUComputePass(computePass);
 }
 
 static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
 {
-    DEBUG_GROUP(device, commandBuffer);
+    DebugGroup(commandBuffer);
     SDL_GPUBlitInfo info{};
-    const float colorRatio = static_cast<float>(Width) / Height;
+    const float colorRatio = static_cast<float>(kWidth) / kHeight;
     const float swapchainRatio = static_cast<float>(width) / height;
     float scale = 0.0f;
     float letterboxW = 0.0f;
@@ -801,17 +808,17 @@ static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapc
     float letterboxY = 0.0f;
     if (colorRatio > swapchainRatio)
     {
-        scale = static_cast<float>(width) / Width;
+        scale = static_cast<float>(width) / kWidth;
         letterboxW = width;
-        letterboxH = Height * scale;
+        letterboxH = kHeight * scale;
         letterboxX = 0.0f;
         letterboxY = (height - letterboxH) / 2.0f;
     }
     else
     {
-        scale = static_cast<float>(height) / Height;
+        scale = static_cast<float>(height) / kHeight;
         letterboxH = height;
-        letterboxW = Width * scale;
+        letterboxW = kWidth * scale;
         letterboxX = (width - letterboxW) / 2.0f;
         letterboxY = 0.0f;
     }
@@ -819,8 +826,8 @@ static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapc
     info.load_op = SDL_GPU_LOADOP_CLEAR;
     info.clear_color = clearColor;
     info.source.texture = colorTexture;
-    info.source.w = Width;
-    info.source.h = Height;
+    info.source.w = kWidth;
+    info.source.h = kHeight;
     info.destination.texture = swapchainTexture;
     info.destination.x = letterboxX;
     info.destination.y = letterboxY;
@@ -863,7 +870,7 @@ static void Update()
     }
     if (!swapchainTexture || !width || !height)
     {
-        /* NOTE: not an error. can happen on minimize */
+        // NOTE: not an error. can happen on minimize
         SDL_CancelGPUCommandBuffer(commandBuffer);
         return;
     }
@@ -871,52 +878,51 @@ static void Update()
     UpdateViewProj();
     if (cooldown <= 0)
     {
-        for (int i = 0; i < state.iterations; i++)
+        for (int i = 0; i < state.Iterations; i++)
         {
-            /* TODO: is viscosity correct here? */
-            Diffuse(commandBuffer, textures[TextureVelocityX], state.viscosity);
-            Diffuse(commandBuffer, textures[TextureVelocityY], state.viscosity);
-            Diffuse(commandBuffer, textures[TextureVelocityZ], state.viscosity);
-            Bnd(commandBuffer, textures[TextureVelocityX], 1);
-            Bnd(commandBuffer, textures[TextureVelocityY], 2);
-            Bnd(commandBuffer, textures[TextureVelocityZ], 3);
+            Diffuse(commandBuffer, textures[TextureTypeVelocityX], state.Viscosity);
+            Diffuse(commandBuffer, textures[TextureTypeVelocityY], state.Viscosity);
+            Diffuse(commandBuffer, textures[TextureTypeVelocityZ], state.Viscosity);
+            Bnd(commandBuffer, textures[TextureTypeVelocityX], 1);
+            Bnd(commandBuffer, textures[TextureTypeVelocityY], 2);
+            Bnd(commandBuffer, textures[TextureTypeVelocityZ], 3);
         }
         Project1(commandBuffer);
-        Bnd(commandBuffer, textures[TextureDivergence], 0);
-        Bnd(commandBuffer, textures[TexturePressure], 0);
-        for (int i = 0; i < state.iterations; i++)
+        Bnd(commandBuffer, textures[TextureTypeDivergence], 0);
+        Bnd(commandBuffer, textures[TextureTypePressure], 0);
+        for (int i = 0; i < state.Iterations; i++)
         {
             Project2(commandBuffer);
-            Bnd(commandBuffer, textures[TexturePressure], 0);
+            Bnd(commandBuffer, textures[TextureTypePressure], 0);
         }
         Project3(commandBuffer);
-        Bnd(commandBuffer, textures[TextureVelocityX], 1);
-        Bnd(commandBuffer, textures[TextureVelocityY], 2);
-        Bnd(commandBuffer, textures[TextureVelocityZ], 3);
-        Advect1(commandBuffer, TextureVelocityX);
-        Advect1(commandBuffer, TextureVelocityY);
-        Advect1(commandBuffer, TextureVelocityZ);
-        textures[TextureVelocityX].Swap();
-        textures[TextureVelocityY].Swap();
-        textures[TextureVelocityZ].Swap();
-        Bnd(commandBuffer, textures[TextureVelocityX], 1);
-        Bnd(commandBuffer, textures[TextureVelocityY], 2);
-        Bnd(commandBuffer, textures[TextureVelocityZ], 3);
+        Bnd(commandBuffer, textures[TextureTypeVelocityX], 1);
+        Bnd(commandBuffer, textures[TextureTypeVelocityY], 2);
+        Bnd(commandBuffer, textures[TextureTypeVelocityZ], 3);
+        Advect1(commandBuffer, TextureTypeVelocityX);
+        Advect1(commandBuffer, TextureTypeVelocityY);
+        Advect1(commandBuffer, TextureTypeVelocityZ);
+        textures[TextureTypeVelocityX].Swap();
+        textures[TextureTypeVelocityY].Swap();
+        textures[TextureTypeVelocityZ].Swap();
+        Bnd(commandBuffer, textures[TextureTypeVelocityX], 1);
+        Bnd(commandBuffer, textures[TextureTypeVelocityY], 2);
+        Bnd(commandBuffer, textures[TextureTypeVelocityZ], 3);
         Project1(commandBuffer);
         Project2(commandBuffer);
         Project3(commandBuffer);
-        Diffuse(commandBuffer, textures[TextureDensity], state.diffusion);
+        Diffuse(commandBuffer, textures[TextureTypeDensity], state.Diffusion);
         Advect2(commandBuffer);
-        Bnd(commandBuffer, textures[TextureDensity], 0);
-        cooldown = delay;
+        Bnd(commandBuffer, textures[TextureTypeDensity], 0);
+        cooldown = kCooldown;
     }
-    if (texture == TextureCount)
+    if (texture == TextureTypeCount)
     {
-        RenderCombined(commandBuffer);
+        RenderComposite(commandBuffer);
     }
     else
     {
-        RenderDebug(commandBuffer);
+        RenderSingle(commandBuffer);
     }
     Letterbox(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
@@ -930,7 +936,7 @@ int main(int argc, char** argv)
         SDL_Log("Failed to initialize");
         return 1;
     }
-    if (!CreatePipelines(device, window))
+    if (!CreatePipelines())
     {
         SDL_Log("Failed to create pipelines");
         return 1;
@@ -958,8 +964,8 @@ int main(int argc, char** argv)
     while (running)
     {
         time2 = SDL_GetTicks();
-        dt = time2 - time1;
-        cooldown -= dt;
+        float deltaTime = time2 - time1;
+        cooldown -= deltaTime;
         time1 = time2;
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -970,15 +976,15 @@ int main(int argc, char** argv)
             case SDL_EVENT_MOUSE_WHEEL:
                 if (!hovered)
                 {
-                    distance = std::max(1.0f, distance - event.wheel.y * Zoom * dt);
+                    distance = std::max(1.0f, distance - event.wheel.y * kZoom);
                 }
                 break;
             case SDL_EVENT_MOUSE_MOTION:
                 if (!focused && !hovered && event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
-                    yaw += event.motion.xrel * Pan * dt;
-                    pitch -= event.motion.yrel * Pan * dt;
+                    yaw += event.motion.xrel * kPan;
+                    pitch -= event.motion.yrel * kPan;
                     pitch = std::clamp(pitch, -limit, limit);
                 }
                 break;
@@ -1005,13 +1011,17 @@ int main(int argc, char** argv)
         Update();
     }
     SDL_HideWindow(window);
-    for (int i = 0; i < TextureCount; i++)
+    for (int i = 0; i < TextureTypeCount; i++)
     {
         textures[i].Free(device);
     }
     SDL_ReleaseGPUTexture(device, colorTexture);
     SDL_ReleaseGPUSampler(device, sampler);
-    FreePipelines(device);
+    for (int i = 0; i < PipelineTypeCount; i++)
+    {
+        SDL_ReleaseGPUComputePipeline(device, pipelines[i]);
+        pipelines[i] = nullptr;
+    }
     ImGui_ImplSDLGPU3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

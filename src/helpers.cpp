@@ -1,18 +1,29 @@
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
 
-#include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <exception>
+#include <filesystem>
 #include <format>
 #include <fstream>
 #include <iterator>
 #include <string>
-#include <string_view>
 
-#include "shader.hpp"
+#include "helpers.hpp"
 
-static void* Load(SDL_GPUDevice* device, const std::string_view& name)
+DebugGroupClass::DebugGroupClass(SDL_GPUCommandBuffer* commandBuffer, const char* name)
+    : CommandBuffer{commandBuffer}
+{
+    SDL_PushGPUDebugGroup(CommandBuffer, name);
+}
+
+DebugGroupClass::~DebugGroupClass()
+{
+    SDL_PopGPUDebugGroup(CommandBuffer);
+}
+
+static void* Load(SDL_GPUDevice* device, const char* name)
 {
     SDL_GPUShaderFormat shaderFormat = SDL_GetGPUShaderFormats(device);
     const char* entrypoint;
@@ -37,16 +48,18 @@ static void* Load(SDL_GPUDevice* device, const std::string_view& name)
     }
     else
     {
-        assert(false);
+        SDL_assert(false);
     }
-    std::string shaderPath = std::format("{}.{}", name, fileExtension);
+    std::filesystem::path path = SDL_GetBasePath();
+    path /= name;
+    std::string shaderPath = std::format("{}.{}", path.string(), fileExtension);
     std::ifstream shaderFile(shaderPath, std::ios::binary);
     if (shaderFile.fail())
     {
         SDL_Log("Failed to open shader: %s", shaderPath.data());
         return nullptr;
     }
-    std::string jsonPath = std::format("{}.json", name);
+    std::string jsonPath = std::format("{}.json", path.string());
     std::ifstream jsonFile(jsonPath, std::ios::binary);
     if (jsonFile.fail())
     {
@@ -65,7 +78,7 @@ static void* Load(SDL_GPUDevice* device, const std::string_view& name)
         return nullptr;
     }
     void* shader = nullptr;
-    if (name.contains(".comp"))
+    if (std::strstr(name, ".comp"))
     {
         SDL_GPUComputePipelineCreateInfo info{};
         info.num_samplers = json["samplers"];
@@ -94,7 +107,7 @@ static void* Load(SDL_GPUDevice* device, const std::string_view& name)
         info.code_size = shaderData.size();
         info.entrypoint = entrypoint;
         info.format = shaderFormat;
-        if (name.contains(".frag"))
+        if (std::strstr(name, ".frag"))
         {
             info.stage = SDL_GPU_SHADERSTAGE_FRAGMENT;
         }
@@ -106,18 +119,18 @@ static void* Load(SDL_GPUDevice* device, const std::string_view& name)
     }
     if (!shader)
     {
-        SDL_Log("Failed to create shader: %s, %s", name.data(), SDL_GetError());
+        SDL_Log("Failed to create shader: %s, %s", name, SDL_GetError());
         return nullptr;
     }
     return shader;
 }
 
-SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const std::string_view& name)
+SDL_GPUShader* LoadShader(SDL_GPUDevice* device, const char* name)
 {
     return static_cast<SDL_GPUShader*>(Load(device, name));
 }
 
-SDL_GPUComputePipeline* LoadComputePipeline(SDL_GPUDevice* device, const std::string_view& name)
+SDL_GPUComputePipeline* LoadComputePipeline(SDL_GPUDevice* device, const char* name)
 {
     return static_cast<SDL_GPUComputePipeline*>(Load(device, name));
 }

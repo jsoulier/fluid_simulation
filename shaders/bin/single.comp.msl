@@ -1,0 +1,83 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct uniformInverseView
+{
+    float4x4 inverseView;
+};
+
+struct uniformInverseProj
+{
+    float4x4 inverseProj;
+};
+
+struct uniformCameraPosition
+{
+    float3 cameraPosition;
+};
+
+constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
+
+static inline __attribute__((always_inline))
+float3 GetRayDirection(thread const float4x4& inverseView, thread const float4x4& inverseProj, thread const float2& texcoord)
+{
+    float4 ndc = float4((texcoord * 2.0) - float2(1.0), 0.0, 1.0);
+    float4 viewRay = inverseProj * ndc;
+    viewRay /= float4(viewRay.w);
+    float4 worldRay = inverseView * float4(viewRay.xyz, 0.0);
+    return fast::normalize(worldRay.xyz);
+}
+
+kernel void main0(constant uniformInverseView& _120 [[buffer(0)]], constant uniformInverseProj& _123 [[buffer(1)]], constant uniformCameraPosition& _149 [[buffer(2)]], texture3d<float> inImage [[texture(0)]], texture2d<float, access::write> outColor [[texture(1)]], sampler inImageSmplr [[sampler(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    int3 size = int3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
+    int2 _imageSize = int2(outColor.get_width(), outColor.get_height());
+    int2 id = int2(gl_GlobalInvocationID.xy);
+    bool _93 = any(id >= (_imageSize - int2(1)));
+    bool _101;
+    if (!_93)
+    {
+        _101 = any(id <= int2(0));
+    }
+    else
+    {
+        _101 = _93;
+    }
+    if (_101)
+    {
+        return;
+    }
+    float2 texcoord = float2(id) / float2(_imageSize);
+    texcoord.y = 1.0 - texcoord.y;
+    float4x4 param = _120.inverseView;
+    float4x4 param_1 = _123.inverseProj;
+    float2 param_2 = texcoord;
+    float3 rayDirection = GetRayDirection(param, param_1, param_2);
+    float4 result = float4(0.0);
+    for (int i = 0; i < 512; i++)
+    {
+        int3 cell = int3(_149.cameraPosition + ((rayDirection * float(i)) * 1.0));
+        bool _164 = any(cell >= size);
+        bool _172;
+        if (!_164)
+        {
+            _172 = any(cell < int3(0));
+        }
+        else
+        {
+            _172 = _164;
+        }
+        if (_172)
+        {
+            continue;
+        }
+        result += float4(abs(inImage.read(uint3(cell), 0).x));
+    }
+    result *= 50.0;
+    outColor.write(result, uint2(id));
+}
+

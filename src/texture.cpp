@@ -1,6 +1,6 @@
 #include <SDL3/SDL.h>
 
-#include "rw_texture.hpp"
+#include "texture.hpp"
 
 bool ReadWriteTexture::Create(SDL_GPUDevice* device, int size)
 {
@@ -16,8 +16,8 @@ bool ReadWriteTexture::Create(SDL_GPUDevice* device, int size)
     info.num_levels = 1;
     for (int i = 0; i < 2; i++)
     {
-        textures[i] = SDL_CreateGPUTexture(device, &info);
-        if (!textures[i])
+        Textures[i] = SDL_CreateGPUTexture(device, &info);
+        if (!Textures[i])
         {
             SDL_Log("Failed to create texture: %s", SDL_GetError());
             return false;
@@ -30,8 +30,8 @@ void ReadWriteTexture::Free(SDL_GPUDevice* device)
 {
     for (int i = 0; i < 2; i++)
     {
-        SDL_ReleaseGPUTexture(device, textures[i]);
-        textures[i] = nullptr;
+        SDL_ReleaseGPUTexture(device, Textures[i]);
+        Textures[i] = nullptr;
     }
 }
 
@@ -53,15 +53,15 @@ SDL_GPUComputePass* ReadWriteTexture::BeginWritePass(SDL_GPUCommandBuffer* comma
 
 void ReadWriteTexture::Swap()
 {
-    readIndex = (readIndex + 1) % 2;
+    ReadIndex = (ReadIndex + 1) % 2;
 }
 
 SDL_GPUTexture* ReadWriteTexture::GetReadTexture()
 {
-    return textures[readIndex];
+    return Textures[ReadIndex];
 }
 
 SDL_GPUTexture* ReadWriteTexture::GetWriteTexture()
 {
-    return textures[(readIndex + 1) % 2];
+    return Textures[(ReadIndex + 1) % 2];
 }

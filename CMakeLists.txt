@@ -22,11 +22,9 @@ add_executable(fluid_simulation WIN32
     lib/imgui/imgui_impl_sdlgpu3.cpp
     lib/imgui/imgui_tables.cpp
     lib/imgui/imgui_widgets.cpp
-    src/debug_group.cpp
+    src/helpers.cpp
     src/main.cpp
-    src/pipeline.cpp
-    src/rw_texture.cpp
-    src/shader.cpp
+    src/texture.cpp
 )
 set_target_properties(fluid_simulation PROPERTIES CXX_STANDARD 23)
 target_include_directories(fluid_simulation PRIVATE lib/imgui)
@@ -36,7 +34,6 @@ function(add_shader FILE)
     set(DEPENDS ${ARGN})
     set(GLSL ${CMAKE_SOURCE_DIR}/shaders/${FILE})
     set(SPV ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.spv)
-    set(DXIL ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.dxil)
     set(MSL ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.msl)
     set(JSON ${CMAKE_SOURCE_DIR}/shaders/bin/${FILE}.json)
     function(compile PROGRAM SOURCE OUTPUT)
@@ -56,7 +53,6 @@ function(add_shader FILE)
     if (MSVC)
         set(SHADERCROSS lib/SDL_shadercross/msvc/shadercross.exe)
         compile(glslc ${GLSL} ${SPV})
-        compile(${SHADERCROSS} ${SPV} ${DXIL})
         compile(${SHADERCROSS} ${SPV} ${MSL})
         compile(${SHADERCROSS} ${SPV} ${JSON})
     endif()
@@ -75,13 +71,9 @@ function(add_shader FILE)
         add_custom_target(${NAME} DEPENDS ${BINARY})
         add_dependencies(fluid_simulation ${NAME})
     endfunction()
-    package(${SPV})
-    if(WIN32)
-        package(${DXIL})
-    elseif(APPLE)
-        package(${MSL})
-    endif()
     package(${JSON})
+    package(${MSL})
+    package(${SPV})
 endfunction()
 add_shader(add1.comp)
 add_shader(add2.comp src/config.hpp)
@@ -93,14 +85,12 @@ add_shader(bnd3.comp src/config.hpp)
 add_shader(bnd4.comp src/config.hpp)
 add_shader(bnd5.comp src/config.hpp)
 add_shader(clear.comp src/config.hpp)
-add_shader(combined.frag shaders/shader.glsl)
-add_shader(combined.vert shaders/shader.glsl)
-add_shader(debug.frag shaders/shader.glsl)
-add_shader(debug.vert shaders/shader.glsl)
+add_shader(composite.comp shaders/shader.glsl src/config.hpp)
 add_shader(diffuse.comp src/config.hpp shaders/shader.glsl)
 add_shader(project1.comp src/config.hpp)
 add_shader(project2.comp src/config.hpp shaders/shader.glsl)
 add_shader(project3.comp src/config.hpp)
+add_shader(single.comp shaders/shader.glsl src/config.hpp)
 
 configure_file(LICENSE.txt ${BINARY_DIR} COPYONLY)
 configure_file(README.md ${BINARY_DIR} COPYONLY)
