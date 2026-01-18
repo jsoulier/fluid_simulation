@@ -8,8 +8,7 @@ bool ReadWriteTexture::Create(SDL_GPUDevice* device, int size)
     SDL_GPUTextureCreateInfo info{};
     info.format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT;
     info.type = SDL_GPU_TEXTURETYPE_3D;
-    info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER |
-        SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
+    info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_SIMULTANEOUS_READ_WRITE;
     info.width = size;
     info.height = size;
     info.layer_count_or_depth = size;
@@ -28,11 +27,10 @@ bool ReadWriteTexture::Create(SDL_GPUDevice* device, int size)
 
 void ReadWriteTexture::Free(SDL_GPUDevice* device)
 {
-    for (int i = 0; i < 2; i++)
-    {
-        SDL_ReleaseGPUTexture(device, Textures[i]);
-        Textures[i] = nullptr;
-    }
+    SDL_ReleaseGPUTexture(device, Textures[0]);
+    SDL_ReleaseGPUTexture(device, Textures[1]);
+    Textures[0] = nullptr;
+    Textures[1] = nullptr;
 }
 
 SDL_GPUComputePass* ReadWriteTexture::BeginReadPass(SDL_GPUCommandBuffer* commandBuffer)
