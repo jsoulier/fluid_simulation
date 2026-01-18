@@ -36,3 +36,8 @@ cmake --build . --parallel 8
 cd bin
 ./fluid_simulation
 ```
+
+#### Shaders
+
+Shaders are prebuilt.
+To build locally, install [SDL_shadercross](https://github.com/libsdl-org/SDL_shadercross) to your path
