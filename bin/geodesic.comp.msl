@@ -34,9 +34,9 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
     do
     {
         bool _86;
-        if (!(gl_GlobalInvocationID.x >= 400u))
+        if (!(gl_GlobalInvocationID.x >= 1600u))
         {
-            _86 = gl_GlobalInvocationID.y >= 300u;
+            _86 = gl_GlobalInvocationID.y >= 1200u;
         }
         else
         {
@@ -46,7 +46,7 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
         {
             break;
         }
-        float3 _116 = fast::normalize(((float3(UniformBuffer.CameraRight) * (((((float(gl_GlobalInvocationID.x) + 0.5) * 0.004999999888241291046142578125) - 1.0) * UniformBuffer.Aspect) * UniformBuffer.TanHalfFov)) - (float3(UniformBuffer.CameraUp) * ((1.0 - ((float(gl_GlobalInvocationID.y) + 0.5) * 0.006666666828095912933349609375)) * UniformBuffer.TanHalfFov))) + float3(UniformBuffer.CameraForward));
+        float3 _116 = fast::normalize(((float3(UniformBuffer.CameraRight) * (((((float(gl_GlobalInvocationID.x) + 0.5) * 0.00124999997206032276153564453125) - 1.0) * UniformBuffer.Aspect) * UniformBuffer.TanHalfFov)) - (float3(UniformBuffer.CameraUp) * ((1.0 - ((float(gl_GlobalInvocationID.y) + 0.5) * 0.00166666670702397823333740234375)) * UniformBuffer.TanHalfFov))) + float3(UniformBuffer.CameraForward));
         float _119 = length(float3(UniformBuffer.CameraPosition));
         float3 _121 = float3(UniformBuffer.CameraPosition) / float3(_119);
         float3 _122 = cross(_121, _116);
