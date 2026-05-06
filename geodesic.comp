@@ -29,20 +29,22 @@ struct Ray
     float L;
 };
 
-// Polar:
-//
-// struct Ray
-// {
-//     float3 Position;
-//     float R;
-//     float Theta;
-//     float Phi;
-//     float Dr;
-//     float Dtheta;
-//     float Dphi;
-//     float E;
-//     float L;
-// };
+/*
+Polar:
+
+struct Ray
+{
+    float3 Position;
+    float R;
+    float Theta;
+    float Phi;
+    float Dr;
+    float Dtheta;
+    float Dphi;
+    float E;
+    float L;
+};
+*/
 
 struct Object
 {
@@ -96,36 +98,38 @@ Ray CreateRay(float3 position, float3 direction)
     return ray;
 }
 
-// Polar:
-//
-// Ray CreateRay(float3 position, float3 direction)
-// {
-//     Ray ray;
-//     ray.Position = position;
-//     ray.R = length(position);
-//     ray.Theta = acos(position.z / ray.R);
-//     ray.Phi = atan2(position.y, position.x);
-//     float dx = direction.x;
-//     float dy = direction.y;
-//     float dz = direction.z;
-//     ray.Dr =
-//         sin(ray.Theta) * cos(ray.Phi) * dx +
-//         sin(ray.Theta) * sin(ray.Phi) * dy +
-//         cos(ray.Theta) * dz;
-//     ray.Dtheta = (
-//         cos(ray.Theta) * cos(ray.Phi) * dx +
-//         cos(ray.Theta) * sin(ray.Phi) * dy -
-//         sin(ray.Theta) * dz) / ray.R;
-//     ray.Dphi = (-sin(ray.Phi) * dx + cos(ray.Phi) * dy) / (ray.R * sin(ray.Theta));
-//     ray.L = ray.R * ray.R * sin(ray.Theta) * ray.Dphi;
-//     float f = 1.0f - kBlackHoleRadius / ray.R;
-//     float dl =
-//         sqrt((ray.Dr * ray.Dr) / f +
-//         ray.R * ray.R * (ray.Dtheta * ray.Dtheta +
-//         sin(ray.Theta) * sin(ray.Theta) * ray.Dphi * ray.Dphi));
-//     ray.E = f * dl;
-//     return ray;
-// }
+/*
+Polar:
+
+Ray CreateRay(float3 position, float3 direction)
+{
+    Ray ray;
+    ray.Position = position;
+    ray.R = length(position);
+    ray.Theta = acos(position.z / ray.R);
+    ray.Phi = atan2(position.y, position.x);
+    float dx = direction.x;
+    float dy = direction.y;
+    float dz = direction.z;
+    ray.Dr =
+        sin(ray.Theta) * cos(ray.Phi) * dx +
+        sin(ray.Theta) * sin(ray.Phi) * dy +
+        cos(ray.Theta) * dz;
+    ray.Dtheta = (
+        cos(ray.Theta) * cos(ray.Phi) * dx +
+        cos(ray.Theta) * sin(ray.Phi) * dy -
+        sin(ray.Theta) * dz) / ray.R;
+    ray.Dphi = (-sin(ray.Phi) * dx + cos(ray.Phi) * dy) / (ray.R * sin(ray.Theta));
+    ray.L = ray.R * ray.R * sin(ray.Theta) * ray.Dphi;
+    float f = 1.0f - kBlackHoleRadius / ray.R;
+    float dl =
+        sqrt((ray.Dr * ray.Dr) / f +
+        ray.R * ray.R * (ray.Dtheta * ray.Dtheta +
+        sin(ray.Theta) * sin(ray.Theta) * ray.Dphi * ray.Dphi));
+    ray.E = f * dl;
+    return ray;
+}
+*/
 
 void Step(inout Ray ray, float dt)
 {
@@ -139,34 +143,36 @@ void Step(inout Ray ray, float dt)
     ray.Position = ray.R * (cos(ray.Phi) * ray.U + sin(ray.Phi) * ray.W);
 }
 
-// Polar:
-//
-// void Step(inout Ray ray)
-// {
-//     float r = ray.R;
-//     float theta = ray.Theta;
-//     float dr = ray.Dr;
-//     float dtheta = ray.Dtheta;
-//     float dphi = ray.Dphi;
-//     float f = 1.0f - kBlackHoleRadius / r;
-//     float dl = ray.E / f;
-//     float3 d2;
-//     d2.x = -
-//         (kBlackHoleRadius / (2.0f * r * r)) * f * dl * dl +
-//         (kBlackHoleRadius / (2.0f * r * r * f)) * dr * dr +
-//         r * (dtheta * dtheta + sin(theta) * sin(theta) * dphi * dphi);
-//     d2.y = -2.0f * dr * dtheta / r + sin(theta) * cos(theta) * dphi * dphi;
-//     d2.z = -2.0f * dr * dphi / r - 2.0f * cos(theta) / sin(theta) * dtheta * dphi;
-//     ray.R += kLambda * dr;
-//     ray.Theta += kLambda * dtheta;
-//     ray.Phi += kLambda * dphi;
-//     ray.Dr += kLambda * d2.x;
-//     ray.Dtheta += kLambda * d2.y;
-//     ray.Dphi += kLambda * d2.z;
-//     ray.Position.x = ray.R * sin(ray.Theta) * cos(ray.Phi);
-//     ray.Position.y = ray.R * sin(ray.Theta) * sin(ray.Phi);
-//     ray.Position.z = ray.R * cos(ray.Theta);
-// }
+/*
+Polar:
+
+void Step(inout Ray ray)
+{
+    float r = ray.R;
+    float theta = ray.Theta;
+    float dr = ray.Dr;
+    float dtheta = ray.Dtheta;
+    float dphi = ray.Dphi;
+    float f = 1.0f - kBlackHoleRadius / r;
+    float dl = ray.E / f;
+    float3 d2;
+    d2.x = -
+        (kBlackHoleRadius / (2.0f * r * r)) * f * dl * dl +
+        (kBlackHoleRadius / (2.0f * r * r * f)) * dr * dr +
+        r * (dtheta * dtheta + sin(theta) * sin(theta) * dphi * dphi);
+    d2.y = -2.0f * dr * dtheta / r + sin(theta) * cos(theta) * dphi * dphi;
+    d2.z = -2.0f * dr * dphi / r - 2.0f * cos(theta) / sin(theta) * dtheta * dphi;
+    ray.R += kLambda * dr;
+    ray.Theta += kLambda * dtheta;
+    ray.Phi += kLambda * dphi;
+    ray.Dr += kLambda * d2.x;
+    ray.Dtheta += kLambda * d2.y;
+    ray.Dphi += kLambda * d2.z;
+    ray.Position.x = ray.R * sin(ray.Theta) * cos(ray.Phi);
+    ray.Position.y = ray.R * sin(ray.Theta) * sin(ray.Phi);
+    ray.Position.z = ray.R * cos(ray.Theta);
+}
+*/
 
 [numthreads(THREADS, THREADS, 1)]
 void main(uint3 id : SV_DispatchThreadID)
@@ -272,60 +278,62 @@ void main(uint3 id : SV_DispatchThreadID)
     outImage[id.xy] = float4(color, 1.0f);
 }
 
-// Polar:
-//
-// [numthreads(THREADS, THREADS, 1)]
-// void main(uint3 id : SV_DispatchThreadID)
-// {
-//     if (id.x >= WIDTH || id.y >= HEIGHT)
-//     {
-//         return;
-//     }
-//     float u = (2.0f * (id.x + 0.5f) / WIDTH - 1.0f) * Aspect * TanHalfFov;
-//     float v = (1.0f - 2.0f * (id.y + 0.5f) / HEIGHT) * TanHalfFov;
-//     float3 direction = normalize(u * CameraRight - v * CameraUp + CameraForward);
-//     Ray ray = CreateRay(CameraPosition, direction);
-//     float nearest = 0.0f;
-//     for (int i = 0; i < kSteps; i++)
-//     {
-//         if (ray.R <= kBlackHoleRadius)
-//         {
-//             outImage[id.xy] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-//             return;
-//         }
-//         float3 position = ray.Position;
-//         Step(ray);
-//         nearest -= distance(position, ray.Position);
-//         float r = length(float2(ray.Position.x, ray.Position.z));
-//         if (position.y * ray.Position.y < 0.0f && r >= DiskR1 && r <= DiskR2)
-//         {
-//             r = length(ray.Position) / DiskR2;
-//             outImage[id.xy] = float4(1.0f, r, 0.2f, r);
-//             return;
-//         }
-//         if (nearest < 0.0f)
-//         {
-//             nearest = kEscape;
-//             for (int i = 0; i < ObjectCount; i++)
-//             {
-//                 float d = distance(ray.Position, objects[i].Position) - objects[i].Radius;
-//                 nearest = min(nearest, d);
-//                 if (d > 0.0f)
-//                 {
-//                     continue;
-//                 }
-//                 float3 N = normalize(ray.Position - objects[i].Position);
-//                 float3 V = normalize(CameraPosition - ray.Position);
-//                 float ambient = 0.1f;
-//                 float intensity = ambient + (1.0f - ambient) * max(dot(N, V), 0.0f);
-//                 outImage[id.xy] = float4(objects[i].Color * intensity, 1.0f);
-//                 return;
-//             }
-//         }
-//         if (ray.R > kEscape)
-//         {
-//             break;
-//         }
-//     }
-//     outImage[id.xy] = float4(0.02f, 0.02f, 0.02f, 1.0f);
-// }
+/*
+Polar:
+
+[numthreads(THREADS, THREADS, 1)]
+void main(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x >= WIDTH || id.y >= HEIGHT)
+    {
+        return;
+    }
+    float u = (2.0f * (id.x + 0.5f) / WIDTH - 1.0f) * Aspect * TanHalfFov;
+    float v = (1.0f - 2.0f * (id.y + 0.5f) / HEIGHT) * TanHalfFov;
+    float3 direction = normalize(u * CameraRight - v * CameraUp + CameraForward);
+    Ray ray = CreateRay(CameraPosition, direction);
+    float nearest = 0.0f;
+    for (int i = 0; i < kSteps; i++)
+    {
+        if (ray.R <= kBlackHoleRadius)
+        {
+            outImage[id.xy] = float4(0.0f, 0.0f, 0.0f, 1.0f);
+            return;
+        }
+        float3 position = ray.Position;
+        Step(ray);
+        nearest -= distance(position, ray.Position);
+        float r = length(float2(ray.Position.x, ray.Position.z));
+        if (position.y * ray.Position.y < 0.0f && r >= DiskR1 && r <= DiskR2)
+        {
+            r = length(ray.Position) / DiskR2;
+            outImage[id.xy] = float4(1.0f, r, 0.2f, r);
+            return;
+        }
+        if (nearest < 0.0f)
+        {
+            nearest = kEscape;
+            for (int i = 0; i < ObjectCount; i++)
+            {
+                float d = distance(ray.Position, objects[i].Position) - objects[i].Radius;
+                nearest = min(nearest, d);
+                if (d > 0.0f)
+                {
+                    continue;
+                }
+                float3 N = normalize(ray.Position - objects[i].Position);
+                float3 V = normalize(CameraPosition - ray.Position);
+                float ambient = 0.1f;
+                float intensity = ambient + (1.0f - ambient) * max(dot(N, V), 0.0f);
+                outImage[id.xy] = float4(objects[i].Color * intensity, 1.0f);
+                return;
+            }
+        }
+        if (ray.R > kEscape)
+        {
+            break;
+        }
+    }
+    outImage[id.xy] = float4(0.02f, 0.02f, 0.02f, 1.0f);
+}
+*/
