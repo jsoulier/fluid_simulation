@@ -57,7 +57,6 @@ static bool Init()
 {
     SDL_SetAppMetadata("Black Hole Simulation", nullptr, nullptr);
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_VERBOSE);
-    
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
         SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
@@ -260,10 +259,10 @@ static void Draw()
         info.source.w = WIDTH;
         info.source.h = HEIGHT;
         info.destination.texture = swapchainTexture;
-        info.destination.x = (float)letterboxX;
-        info.destination.y = (float)letterboxY;
-        info.destination.w = (float)letterboxW;
-        info.destination.h = (float)letterboxH;
+        info.destination.x = letterboxX;
+        info.destination.y = letterboxY;
+        info.destination.w = letterboxW;
+        info.destination.h = letterboxH;
         info.filter = SDL_GPU_FILTER_LINEAR;
         SDL_BlitGPUTexture(commandBuffer, &info);
     }

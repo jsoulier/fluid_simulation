@@ -1,4 +1,5 @@
-// Modified to use planar geodesic integration
+// Modified to use Euler's method (mapping geodesics to a plane)
+// Implementation derived from Kavan's video is kept as a reference
 
 #include "config.h"
 
@@ -30,8 +31,6 @@ struct Ray
 };
 
 /*
-Polar:
-
 struct Ray
 {
     float3 Position;
@@ -99,8 +98,6 @@ Ray CreateRay(float3 position, float3 direction)
 }
 
 /*
-Polar:
-
 Ray CreateRay(float3 position, float3 direction)
 {
     Ray ray;
@@ -144,8 +141,6 @@ void Step(inout Ray ray, float dt)
 }
 
 /*
-Polar:
-
 void Step(inout Ray ray)
 {
     float r = ray.R;
@@ -181,7 +176,6 @@ void main(uint3 id : SV_DispatchThreadID)
     {
         return;
     }
-
     float3 seed = float3(float(id.x), float(id.y), float(FrameCount) * 0.0113f);
     float jitterX = Hash(seed, 0.1f) - 0.5f;
     float jitterY = Hash(seed, 0.2f) - 0.5f;
@@ -191,7 +185,6 @@ void main(uint3 id : SV_DispatchThreadID)
     Ray ray = CreateRay(CameraPosition, direction);
     float3 color = float3(0, 0, 0);
     bool hit = false;
-
     for (int i = 0; i < kMaxSteps; i++)
     {
         if (ray.R <= kBlackHoleRadius)
@@ -200,7 +193,6 @@ void main(uint3 id : SV_DispatchThreadID)
             hit = true;
             break;
         }
-
         float3 previousPosition = ray.Position;
         float sdf = length(ray.Position) - kBlackHoleRadius;
         for (uint i = 0; i < ObjectCount; i++)
@@ -214,7 +206,6 @@ void main(uint3 id : SV_DispatchThreadID)
         float dl = ray.E / f;
         float dt = max(kMinStep, min(sdf * 0.5f, ray.R * 0.1f) / dl);
         Step(ray, dt);
-
         for (uint j = 0; j < ObjectCount; j++)
         {
             float d = distance(ray.Position, objects[j].Position) - objects[j].Radius;
@@ -232,13 +223,11 @@ void main(uint3 id : SV_DispatchThreadID)
         {
             break;
         }
-
         if (previousPosition.y * ray.Position.y < 0.0f)
         {
             float t = abs(previousPosition.y) / (abs(previousPosition.y) + abs(ray.Position.y));
             float3 intersection = lerp(previousPosition, ray.Position, t);
             float diskR = length(float2(intersection.x, intersection.z));
-            
             if (diskR >= DiskR1 && diskR <= DiskR2)
             {
                 float ratio = diskR / DiskR2;
@@ -247,13 +236,11 @@ void main(uint3 id : SV_DispatchThreadID)
                 break;
             }
         }
-
         if (ray.R > kEscape)
         {
             break;
         }
     }
-    
     if (!hit)
     {
         if (Hash(floor(normalize(ray.Position) * 500.0f), 0.0f) > 0.998f)
@@ -265,13 +252,11 @@ void main(uint3 id : SV_DispatchThreadID)
             color = float3(0.02f, 0.02f, 0.02f);
         }
     }
-
     float4 previousColor = accumulationBuffer[id.xy];
     if (ResetAccumulation != 0)
     {
         previousColor = float4(0.0f, 0.0f, 0.0f, 0.0f);
     }
-    
     float sampleCount = previousColor.a + 1.0f;
     color = lerp(previousColor.rgb, color, 1.0f / sampleCount);
     accumulationBuffer[id.xy] = float4(color, sampleCount);
