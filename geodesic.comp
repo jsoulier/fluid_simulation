@@ -11,45 +11,22 @@ cbuffer UniformBuffer : register(b0, space2)
     float3 CameraForward;
     float DiskR1;
     float DiskR2;
+    uint FrameCount;
+    uint ResetAccumulation;
 };
 
-// =========================================================================
-// NEW APPROACH: PLANAR GEODESIC INTEGRATION
-// =========================================================================
-// Instead of tracking 3D spherical coordinates (theta, phi), we exploit
-// the fact that every light ray in Schwarzschild space stays on a 2D plane.
-// This removes "polar singularities" (the quasar glitch) and improves speed.
+// Planar integration remains the foundation for stable, glitch-free geodesics.
 struct Ray
 {
     float3 Position;
-    float3 U; // 2D Plane Basis X-axis
-    float3 W; // 2D Plane Basis Y-axis
-    float R;  // Radial distance from center
-    float Phi; // Angle within the custom 2D plane
-    float Dr;  // Radial velocity
-    float E;   // Energy (Conserved)
-    float L;   // Angular Momentum (Conserved)
-};
-
-/* 
-// =========================================================================
-// ORIGINAL APPROACH (Commented out for reference)
-// =========================================================================
-// This used 3D Spherical coordinates. It suffered from glitches at the
-// poles because dividing by sin(theta) becomes unstable near the Z-axis.
-struct Ray_Original
-{
-    float3 Position;
+    float3 U; // 2D Plane Basis X
+    float3 W; // 2D Plane Basis Y
     float R;
-    float Theta;
     float Phi;
     float Dr;
-    float Dtheta;
-    float Dphi;
     float E;
     float L;
 };
-*/
 
 struct Object
 {
@@ -61,6 +38,8 @@ struct Object
 
 [[vk::image_format("rgba8")]]
 RWTexture2D<float4> outImage : register(u0, space1);
+[[vk::image_format("rgba32f")]]
+RWTexture2D<float4> accumulationBuffer : register(u1, space1);
 StructuredBuffer<Object> objects : register(t0, space0);
 
 static const float kBlackHoleRadius = 1.269e10f;
@@ -68,9 +47,9 @@ static const float kMinStep = 1.0e6f;
 static const int kMaxSteps = 5000;
 static const float kEscape = 1.0e14f; 
 
-float Hash(float3 p)
+float Hash(float3 p, float seed)
 {
-    p = frac(p * 0.3183099f + 0.1f);
+    p = frac(p * 0.3183099f + seed);
     p *= 17.0f;
     return frac(p.x * p.y * p.z * (p.x + p.y + p.z));
 }
@@ -89,32 +68,25 @@ float GetSceneSDF(float3 pos)
     return d;
 }
 
-// Every light ray is trapped on a 2D sheet (Plane).
-// We find that sheet's X (U) and Y (W) axes here.
 Ray CreateRay(float3 position, float3 direction)
 {
     Ray ray;
     ray.R = length(position);
     ray.Phi = 0.0f;
-    ray.U = position / ray.R; // The "X-axis" of our local plane
+    ray.U = position / ray.R;
     
-    // N is the vector perpendicular to the plane
     float3 N = cross(ray.U, direction);
     float nLen = length(N);
-    
     if (nLen < 1e-6f)
     {
-        // Handle purely radial rays
-        float3 axis = abs(ray.U.y) < 0.9f ? float3(0, 1, 0) : float3(1, 0, 0);
+        float3 axis = abs(ray.U.y) < 0.9f ? float3(0,1,0) : float3(1,0,0);
         ray.W = normalize(cross(ray.U, axis));
     }
     else
     {
-        // W is the "Y-axis" of our local plane
         ray.W = normalize(cross(N, ray.U));
     }
     
-    // Project 3D velocity into our 2D plane coordinates
     ray.Dr = dot(direction, ray.U);
     float Dphi = dot(direction, ray.W) / ray.R;
     ray.L = ray.R * ray.R * Dphi;
@@ -127,51 +99,20 @@ Ray CreateRay(float3 position, float3 direction)
     return ray;
 }
 
-// Planar math: solves for R and Phi only. No poles, no singularities.
 void Step(inout Ray ray, float dt)
 {
     float r = ray.R;
     float dr = ray.Dr;
     float f = 1.0f - kBlackHoleRadius / r;
     
-    // Schwarzschild equations of motion in 2D
     float d2r = -(kBlackHoleRadius / (2.0f * r * r * f)) * (ray.E * ray.E / f - dr * dr) + (ray.L * ray.L / (r * r * r));
     
     ray.R += dt * dr;
     ray.Phi += dt * (ray.L / (r * r));
     ray.Dr += dt * d2r;
     
-    // Reconstruct 3D Position by rotating the U vector by Phi on the plane
     ray.Position = ray.R * (cos(ray.Phi) * ray.U + sin(ray.Phi) * ray.W);
 }
-
-/*
-// =========================================================================
-// ORIGINAL STEP LOGIC (For Reference)
-// =========================================================================
-void Step_Original(inout Ray_Original ray, float kLambda)
-{
-    float r = ray.R;
-    float theta = ray.Theta;
-    float dr = ray.Dr;
-    float dtheta = ray.Dtheta;
-    float dphi = ray.Dphi;
-    float f = 1.0f - kBlackHoleRadius / r;
-    float dl = ray.E / f;
-    float3 d2;
-    d2.x = -(kBlackHoleRadius / (2.0f * r * r)) * f * dl * dl +
-           (kBlackHoleRadius / (2.0f * r * r * f)) * dr * dr +
-           r * (dtheta * dtheta + sin(theta) * sin(theta) * dphi * dphi);
-    d2.y = -2.0f * dr * dtheta / r + sin(theta) * cos(theta) * dphi * dphi;
-    d2.z = -2.0f * dr * dphi / r - 2.0f * cos(theta) / sin(theta) * dtheta * dphi;
-    ray.R += kLambda * dr;
-    ray.Theta += kLambda * dtheta;
-    ray.Phi += kLambda * dphi;
-    ray.Dr += kLambda * d2.x;
-    ray.Dtheta += kLambda * d2.y;
-    ray.Dphi += kLambda * d2.z;
-}
-*/
 
 [numthreads(THREADS, THREADS, 1)]
 void main(uint3 id : SV_DispatchThreadID)
@@ -180,32 +121,38 @@ void main(uint3 id : SV_DispatchThreadID)
     {
         return;
     }
-    
-    float u = (2.0f * (id.x + 0.5f) / WIDTH - 1.0f) * Aspect * TanHalfFov;
-    float v = (1.0f - 2.0f * (id.y + 0.5f) / HEIGHT) * TanHalfFov;
+
+    // Jitter for sub-pixel anti-aliasing
+    float seed = (float)FrameCount * 0.0113f;
+    float3 pixelSeed = float3((float)id.x, (float)id.y, seed);
+    float jitterX = Hash(pixelSeed, 0.1f) - 0.5f;
+    float jitterY = Hash(pixelSeed, 0.2f) - 0.5f;
+
+    float u = (2.0f * (id.x + 0.5f + jitterX) / WIDTH - 1.0f) * Aspect * TanHalfFov;
+    float v = (1.0f - 2.0f * (id.y + 0.5f + jitterY) / HEIGHT) * TanHalfFov;
     float3 direction = normalize(u * CameraRight - v * CameraUp + CameraForward);
     
     Ray ray = CreateRay(CameraPosition, direction);
+    float3 resultColor = float3(0, 0, 0);
+    bool hit = false;
 
     for (int i = 0; i < kMaxSteps; i++)
     {
         if (ray.R <= kBlackHoleRadius)
         {
-            outImage[id.xy] = float4(0.0f, 0.0f, 0.0f, 1.0f);
-            return;
+            resultColor = float3(0, 0, 0);
+            hit = true;
+            break;
         }
 
         float3 prevPos = ray.Position;
         float sdf = GetSceneSDF(ray.Position);
         float f = 1.0f - kBlackHoleRadius / ray.R;
         float dl = ray.E / f;
-        
-        // Adaptive Step: Skip empty space, throttle near gravity curvature
         float dt = max(kMinStep, min(sdf * 0.5f, ray.R * 0.1f) / dl);
         
         Step(ray, dt);
 
-        // Planet Intersections
         for (uint j = 0; j < ObjectCount; j++)
         {
             float d = distance(ray.Position, objects[j].Position) - objects[j].Radius;
@@ -214,12 +161,16 @@ void main(uint3 id : SV_DispatchThreadID)
                 float3 N = normalize(ray.Position - objects[j].Position);
                 float3 V = normalize(CameraPosition - ray.Position);
                 float intensity = 0.1f + 0.9f * max(dot(N, V), 0.0f);
-                outImage[id.xy] = float4(objects[j].Color * intensity, 1.0f);
-                return;
+                resultColor = objects[j].Color * intensity;
+                hit = true;
+                break;
             }
         }
+        if (hit)
+        {
+            break;
+        }
 
-        // Accretion Disk intersection (checking for Y-crossing)
         if (prevPos.y * ray.Position.y < 0.0f)
         {
             float t = abs(prevPos.y) / (abs(prevPos.y) + abs(ray.Position.y));
@@ -229,8 +180,9 @@ void main(uint3 id : SV_DispatchThreadID)
             if (diskR >= DiskR1 && diskR <= DiskR2)
             {
                 float rNorm = diskR / DiskR2;
-                outImage[id.xy] = float4(1.0f, rNorm, 0.2f, rNorm);
-                return;
+                resultColor = float3(1.0f, rNorm, 0.2f) * rNorm;
+                hit = true;
+                break;
             }
         }
 
@@ -240,16 +192,30 @@ void main(uint3 id : SV_DispatchThreadID)
         }
     }
     
-    // Procedural Stars
-    float3 finalDir = normalize(ray.Position);
-    float star = Hash(floor(finalDir * 400.0f));
+    if (!hit)
+    {
+        float3 finalDir = normalize(ray.Position);
+        float starHash = Hash(floor(finalDir * 500.0f), 0.0f);
+        if (starHash > 0.998f)
+        {
+            resultColor = float3(1.0f, 1.0f, 1.0f);
+        }
+        else
+        {
+            resultColor = float3(0.02f, 0.02f, 0.02f);
+        }
+    }
+
+    // Weighted Accumulation
+    float4 prevAccum = accumulationBuffer[id.xy];
+    if (ResetAccumulation != 0)
+    {
+        prevAccum = float4(0, 0, 0, 0);
+    }
     
-    if (star > 0.999f)
-    {
-        outImage[id.xy] = float4(1.0f, 1.0f, 1.0f, 1.0f);
-    }
-    else
-    {
-        outImage[id.xy] = float4(0.02f, 0.02f, 0.02f, 1.0f);
-    }
+    float sampleCount = prevAccum.a + 1.0f;
+    float3 finalColor = lerp(prevAccum.rgb, resultColor, 1.0f / sampleCount);
+    
+    accumulationBuffer[id.xy] = float4(finalColor, sampleCount);
+    outImage[id.xy] = float4(finalColor, 1.0f);
 }
