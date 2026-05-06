@@ -53,9 +53,9 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
         {
             break;
         }
-        float _102 = float(gl_GlobalInvocationID.x);
-        float _105 = float(gl_GlobalInvocationID.y);
-        float3 _107 = float3(_102, _105, float(UniformBuffer.FrameCount) * 0.011300000362098217010498046875) * 0.31830990314483642578125;
+        float _98 = float(gl_GlobalInvocationID.x);
+        float _101 = float(gl_GlobalInvocationID.y);
+        float3 _107 = float3(_98, _101, float(UniformBuffer.FrameCount) * 0.011300000362098217010498046875) * 0.31830990314483642578125;
         float3 _110 = fract(_107 + float3(0.100000001490116119384765625)) * 17.0;
         float _111 = _110.x;
         float _112 = _110.y;
@@ -64,7 +64,7 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
         float _124 = _123.x;
         float _125 = _123.y;
         float _127 = _123.z;
-        float3 _159 = fast::normalize(((float3(UniformBuffer.CameraRight) * ((((((_102 + 0.5) + (fract(((_111 * _112) * _114) * ((_111 + _112) + _114)) - 0.5)) * 0.00124999997206032276153564453125) - 1.0) * UniformBuffer.Aspect) * UniformBuffer.TanHalfFov)) - (float3(UniformBuffer.CameraUp) * ((1.0 - (((_105 + 0.5) + (fract(((_124 * _125) * _127) * ((_124 + _125) + _127)) - 0.5)) * 0.00166666670702397823333740234375)) * UniformBuffer.TanHalfFov))) + float3(UniformBuffer.CameraForward));
+        float3 _159 = fast::normalize(((float3(UniformBuffer.CameraRight) * ((((((_98 + 0.5) + (fract(((_111 * _112) * _114) * ((_111 + _112) + _114)) - 0.5)) * 0.00124999997206032276153564453125) - 1.0) * UniformBuffer.Aspect) * UniformBuffer.TanHalfFov)) - (float3(UniformBuffer.CameraUp) * ((1.0 - (((_101 + 0.5) + (fract(((_124 * _125) * _127) * ((_124 + _125) + _127)) - 0.5)) * 0.00166666670702397823333740234375)) * UniformBuffer.TanHalfFov))) + float3(UniformBuffer.CameraForward));
         float _162 = length(float3(UniformBuffer.CameraPosition));
         float3 _164 = float3(UniformBuffer.CameraPosition) / float3(_162);
         float3 _165 = cross(_164, _159);
@@ -117,12 +117,14 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
                 float _222;
                 for (uint _224 = 0u; _224 < UniformBuffer.ObjectCount; _221 = _222, _224++)
                 {
-                    if (length(float3(objects._m0[_224].Position)) < 1.0)
+                    if (length(float3(objects._m0[_224].Position)) > 1.0)
+                    {
+                        _222 = precise::min(_221, distance(_197, float3(objects._m0[_224].Position)) - objects._m0[_224].Radius);
+                    }
+                    else
                     {
                         _222 = _221;
-                        continue;
                     }
-                    _222 = precise::min(_221, distance(_197, float3(objects._m0[_224].Position)) - objects._m0[_224].Radius);
                 }
                 float _244 = 1.0 - (12689999872.0 / _206);
                 float _250 = precise::max(1000000.0, precise::min(_221 * 0.5, _206 * 0.100000001490116119384765625) / (_195 / _244));
