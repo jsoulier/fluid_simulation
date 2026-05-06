@@ -1,6 +1,6 @@
 # Black Hole Simulation
 
-Black Hole Simulation using SDL3 GPU with compute shaders
+Black Hole Simulation using SDL3 GPU with a compute shader
 
 ![](image1.png)
 *Original olar coordinate implementation (slow at 200x150)*
