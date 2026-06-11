@@ -1,5 +1,5 @@
 {
-    "Diffusion": 0.009999999776482582,
+    "Diffusion": 0.000004,
     "Iterations": 5,
     "Size": 128,
     "Spawners": [
@@ -31,5 +31,5 @@
             "Value": 8.0
         }
     ],
-    "Viscosity": 0.009999999776482582
+    "Viscosity": 0.000004
 }

@@ -8,7 +8,7 @@ layout(set = 0, binding = 0) uniform sampler3D inVelocityX;
 layout(set = 0, binding = 1) uniform sampler3D inVelocityY;
 layout(set = 0, binding = 2) uniform sampler3D inVelocityZ;
 layout(set = 0, binding = 3) uniform sampler3D inDensity;
-layout(set = 1, binding = 0, rgba32f) uniform writeonly image2D outColor;
+layout(set = 1, binding = 0, rgba8) uniform writeonly image2D outColor;
 layout(set = 2, binding = 0) uniform uniformInverseView
 {
     mat4 inverseView;
@@ -27,7 +27,7 @@ void main()
     ivec3 size = textureSize(inVelocityX, 0);
     ivec2 imageSize = imageSize(outColor);
     ivec2 id = ivec2(gl_GlobalInvocationID.xy);
-    if (any(greaterThanEqual(id, imageSize - 1)) || any(lessThanEqual(id, ivec2(0))))
+    if (any(greaterThanEqual(id, imageSize)))
     {
         return;
     }

@@ -8,7 +8,7 @@ layout(set = 0, binding = 0) uniform sampler3D inDensity;
 layout(set = 0, binding = 1) uniform sampler3D inVelocityX;
 layout(set = 0, binding = 2) uniform sampler3D inVelocityY;
 layout(set = 0, binding = 3) uniform sampler3D inVelocityZ;
-layout(set = 1, binding = 0, rgba32f) uniform writeonly image3D outDensity;
+layout(set = 1, binding = 0, r32f) uniform writeonly image3D outDensity;
 layout(set = 2, binding = 0) uniform uniformDeltaTime
 {
     float deltaTime;

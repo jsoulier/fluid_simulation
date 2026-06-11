@@ -14,17 +14,17 @@ vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
     return normalize(worldRay.xyz);
 }
 
-#define LIN_SOLVE(id, inImage, outImage, a, c) \
+#define LIN_SOLVE(id, srcImage, iterImage, outImage, a, c) \
     do \
     { \
         imageStore(outImage, id, vec4( \
-            (texelFetch(inImage, id, 0).x + \
-                a * (texelFetch(inImage, id + ivec3( 1, 0, 0 ), 0).x + \
-                     texelFetch(inImage, id + ivec3(-1, 0, 0 ), 0).x + \
-                     texelFetch(inImage, id + ivec3( 0, 1, 0 ), 0).x + \
-                     texelFetch(inImage, id + ivec3( 0,-1, 0 ), 0).x + \
-                     texelFetch(inImage, id + ivec3( 0, 0, 1 ), 0).x + \
-                     texelFetch(inImage, id + ivec3( 0, 0,-1 ), 0).x)) / c)); \
+            (texelFetch(srcImage, id, 0).x + \
+                a * (texelFetch(iterImage, id + ivec3( 1, 0, 0 ), 0).x + \
+                     texelFetch(iterImage, id + ivec3(-1, 0, 0 ), 0).x + \
+                     texelFetch(iterImage, id + ivec3( 0, 1, 0 ), 0).x + \
+                     texelFetch(iterImage, id + ivec3( 0,-1, 0 ), 0).x + \
+                     texelFetch(iterImage, id + ivec3( 0, 0, 1 ), 0).x + \
+                     texelFetch(iterImage, id + ivec3( 0, 0,-1 ), 0).x)) / c)); \
     } \
     while (false) \
 
@@ -32,9 +32,9 @@ vec3 GetRayDirection(mat4 inverseView, mat4 inverseProj, vec2 texcoord)
     do \
     { \
         float N = size.x - 2; \
-        float dtx = deltaTime * (N - 2); \
-        float dty = deltaTime * (N - 2); \
-        float dtz = deltaTime * (N - 2); \
+        float dtx = deltaTime * N; \
+        float dty = deltaTime * N; \
+        float dtz = deltaTime * N; \
         float tmp1 = dtx * texelFetch(inVelocityX, id, 0).x; \
         float tmp2 = dty * texelFetch(inVelocityY, id, 0).x; \
         float tmp3 = dtz * texelFetch(inVelocityZ, id, 0).x; \
