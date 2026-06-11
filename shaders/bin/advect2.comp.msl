@@ -31,9 +31,9 @@ kernel void main0(constant uniformDeltaTime& _62 [[buffer(0)]], texture3d<float>
     do
     {
         float N = float(size.x - 2);
-        float dtx = _62.deltaTime * (N - 2.0);
-        float dty = _62.deltaTime * (N - 2.0);
-        float dtz = _62.deltaTime * (N - 2.0);
+        float dtx = _62.deltaTime * N;
+        float dty = _62.deltaTime * N;
+        float dtz = _62.deltaTime * N;
         float tmp1 = dtx * inVelocityX.read(uint3(id), 0).x;
         float tmp2 = dty * inVelocityY.read(uint3(id), 0).x;
         float tmp3 = dtz * inVelocityZ.read(uint3(id), 0).x;
@@ -58,8 +58,8 @@ kernel void main0(constant uniformDeltaTime& _62 [[buffer(0)]], texture3d<float>
         int j1i = int(j1);
         int k0i = int(k0);
         int k1i = int(k1);
-        float4 _302 = float4((s0 * ((t0 * ((u0 * inDensity.read(uint3(int3(i0i, j0i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i0i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i0i, j1i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i0i, j1i, k1i)), 0).x))))) + (s1 * ((t0 * ((u0 * inDensity.read(uint3(int3(i1i, j0i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i1i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i1i, j1i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i1i, j1i, k1i)), 0).x))))));
-        outDensity.write(_302, uint3(id));
+        float4 _298 = float4((s0 * ((t0 * ((u0 * inDensity.read(uint3(int3(i0i, j0i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i0i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i0i, j1i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i0i, j1i, k1i)), 0).x))))) + (s1 * ((t0 * ((u0 * inDensity.read(uint3(int3(i1i, j0i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i1i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i1i, j1i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i1i, j1i, k1i)), 0).x))))));
+        outDensity.write(_298, uint3(id));
     } while (false);
 }
 

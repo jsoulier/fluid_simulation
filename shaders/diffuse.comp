@@ -4,8 +4,9 @@
 #include "shader.glsl"
 
 layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = THREADS) in;
-layout(set = 0, binding = 0) uniform sampler3D inImage;
-layout(set = 1, binding = 0, rgba32f) uniform writeonly image3D outImage;
+layout(set = 0, binding = 0) uniform sampler3D inSource;
+layout(set = 0, binding = 1) uniform sampler3D inImage;
+layout(set = 1, binding = 0, r32f) uniform writeonly image3D outImage;
 layout(set = 2, binding = 0) uniform uniformDeltaTime
 {
     float deltaTime;
@@ -26,5 +27,5 @@ void main()
     int N = size.x;
     float a = deltaTime * diffusion * (N - 2) * (N - 2);
     float c = 1 + 6 * a;
-    LIN_SOLVE(id, inImage, outImage, a, c);
+    LIN_SOLVE(id, inSource, inImage, outImage, a, c);
 }

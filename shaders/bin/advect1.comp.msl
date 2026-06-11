@@ -38,9 +38,9 @@ kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformD
         do
         {
             float N = float(size.x - 2);
-            float dtx = _71.deltaTime * (N - 2.0);
-            float dty = _71.deltaTime * (N - 2.0);
-            float dtz = _71.deltaTime * (N - 2.0);
+            float dtx = _71.deltaTime * N;
+            float dty = _71.deltaTime * N;
+            float dtz = _71.deltaTime * N;
             float tmp1 = dtx * inVelocityX.read(uint3(id), 0).x;
             float tmp2 = dty * inVelocityY.read(uint3(id), 0).x;
             float tmp3 = dtz * inVelocityZ.read(uint3(id), 0).x;
@@ -65,8 +65,8 @@ kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformD
             int j1i = int(j1);
             int k0i = int(k0);
             int k1i = int(k1);
-            float4 _310 = float4((s0 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i0i, j0i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i0i, j1i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j1i, k1i)), 0).x))))) + (s1 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i1i, j0i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i1i, j1i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j1i, k1i)), 0).x))))));
-            outVelocity.write(_310, uint3(id));
+            float4 _306 = float4((s0 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i0i, j0i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i0i, j1i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j1i, k1i)), 0).x))))) + (s1 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i1i, j0i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i1i, j1i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j1i, k1i)), 0).x))))));
+            outVelocity.write(_306, uint3(id));
         } while (false);
     }
     else
@@ -76,9 +76,9 @@ kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformD
             do
             {
                 float N_1 = float(size.x - 2);
-                float dtx_1 = _71.deltaTime * (N_1 - 2.0);
-                float dty_1 = _71.deltaTime * (N_1 - 2.0);
-                float dtz_1 = _71.deltaTime * (N_1 - 2.0);
+                float dtx_1 = _71.deltaTime * N_1;
+                float dty_1 = _71.deltaTime * N_1;
+                float dtz_1 = _71.deltaTime * N_1;
                 float tmp1_1 = dtx_1 * inVelocityX.read(uint3(id), 0).x;
                 float tmp2_1 = dty_1 * inVelocityY.read(uint3(id), 0).x;
                 float tmp3_1 = dtz_1 * inVelocityZ.read(uint3(id), 0).x;
@@ -103,8 +103,8 @@ kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformD
                 int j1i_1 = int(j1_1);
                 int k0i_1 = int(k0_1);
                 int k1i_1 = int(k1_1);
-                float4 _554 = float4((s0_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k1i_1)), 0).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k1i_1)), 0).x))))) + (s1_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k1i_1)), 0).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k1i_1)), 0).x))))));
-                outVelocity.write(_554, uint3(id));
+                float4 _547 = float4((s0_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k1i_1)), 0).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k1i_1)), 0).x))))) + (s1_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k1i_1)), 0).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k1i_1)), 0).x))))));
+                outVelocity.write(_547, uint3(id));
             } while (false);
         }
         else
@@ -114,9 +114,9 @@ kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformD
                 do
                 {
                     float N_2 = float(size.x - 2);
-                    float dtx_2 = _71.deltaTime * (N_2 - 2.0);
-                    float dty_2 = _71.deltaTime * (N_2 - 2.0);
-                    float dtz_2 = _71.deltaTime * (N_2 - 2.0);
+                    float dtx_2 = _71.deltaTime * N_2;
+                    float dty_2 = _71.deltaTime * N_2;
+                    float dtz_2 = _71.deltaTime * N_2;
                     float tmp1_2 = dtx_2 * inVelocityX.read(uint3(id), 0).x;
                     float tmp2_2 = dty_2 * inVelocityY.read(uint3(id), 0).x;
                     float tmp3_2 = dtz_2 * inVelocityZ.read(uint3(id), 0).x;
@@ -141,8 +141,8 @@ kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformD
                     int j1i_2 = int(j1_2);
                     int k0i_2 = int(k0_2);
                     int k1i_2 = int(k1_2);
-                    float4 _797 = float4((s0_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k1i_2)), 0).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k1i_2)), 0).x))))) + (s1_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k1i_2)), 0).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k1i_2)), 0).x))))));
-                    outVelocity.write(_797, uint3(id));
+                    float4 _787 = float4((s0_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k1i_2)), 0).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k1i_2)), 0).x))))) + (s1_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k1i_2)), 0).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k1i_2)), 0).x))))));
+                    outVelocity.write(_787, uint3(id));
                 } while (false);
             }
         }

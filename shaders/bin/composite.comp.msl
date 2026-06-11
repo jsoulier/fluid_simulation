@@ -32,46 +32,36 @@ float3 GetRayDirection(thread const float4x4& inverseView, thread const float4x4
     return fast::normalize(worldRay.xyz);
 }
 
-kernel void main0(constant uniformInverseView& _120 [[buffer(0)]], constant uniformInverseProj& _123 [[buffer(1)]], constant uniformCameraPosition& _149 [[buffer(2)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float> inDensity [[texture(3)]], texture2d<float, access::write> outColor [[texture(4)]], sampler inVelocityXSmplr [[sampler(0)]], sampler inVelocityYSmplr [[sampler(1)]], sampler inVelocityZSmplr [[sampler(2)]], sampler inDensitySmplr [[sampler(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant uniformInverseView& _109 [[buffer(0)]], constant uniformInverseProj& _112 [[buffer(1)]], constant uniformCameraPosition& _138 [[buffer(2)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float> inDensity [[texture(3)]], texture2d<float, access::write> outColor [[texture(4)]], sampler inVelocityXSmplr [[sampler(0)]], sampler inVelocityYSmplr [[sampler(1)]], sampler inVelocityZSmplr [[sampler(2)]], sampler inDensitySmplr [[sampler(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
     int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
     int2 _imageSize = int2(outColor.get_width(), outColor.get_height());
     int2 id = int2(gl_GlobalInvocationID.xy);
-    bool _93 = any(id >= (_imageSize - int2(1)));
-    bool _101;
-    if (!_93)
-    {
-        _101 = any(id <= int2(0));
-    }
-    else
-    {
-        _101 = _93;
-    }
-    if (_101)
+    if (any(id >= _imageSize))
     {
         return;
     }
     float2 texcoord = float2(id) / float2(_imageSize);
     texcoord.y = 1.0 - texcoord.y;
-    float4x4 param = _120.inverseView;
-    float4x4 param_1 = _123.inverseProj;
+    float4x4 param = _109.inverseView;
+    float4x4 param_1 = _112.inverseProj;
     float2 param_2 = texcoord;
     float3 rayDirection = GetRayDirection(param, param_1, param_2);
     float4 result = float4(0.0);
     for (int i = 0; i < 512; i++)
     {
-        int3 cell = int3(_149.cameraPosition + ((rayDirection * float(i)) * 1.0));
-        bool _164 = any(cell >= size);
-        bool _172;
-        if (!_164)
+        int3 cell = int3(_138.cameraPosition + ((rayDirection * float(i)) * 1.0));
+        bool _153 = any(cell >= size);
+        bool _161;
+        if (!_153)
         {
-            _172 = any(cell < int3(0));
+            _161 = any(cell < int3(0));
         }
         else
         {
-            _172 = _164;
+            _161 = _153;
         }
-        if (_172)
+        if (_161)
         {
             continue;
         }
