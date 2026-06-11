@@ -67,8 +67,8 @@ struct State
 {
     int Size = 128;
     int Iterations = 5;
-    float Diffusion = 0.01f;
-    float Viscosity = 0.01f;
+    float Diffusion = 0.000004f;
+    float Viscosity = 0.000004f;
     std::vector<Spawner> Spawners;
 
     NLOHMANN_DEFINE_TYPE_INTRUSIVE(State, Size, Iterations, Diffusion, Viscosity, Spawners)
@@ -456,8 +456,8 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     ImGui::SeparatorText("Settings");
     ImGui::SliderFloat("Speed", &speed, 0.0f, 64.0f);
     ImGui::SliderInt("Iterations", &state.Iterations, 1, 50);
-    ImGui::SliderFloat("Diffusion", &state.Diffusion, 0.0f, 1.0f);
-    ImGui::SliderFloat("Viscosity", &state.Viscosity, 0.0f, 1.0f);
+    ImGui::SliderFloat("Diffusion", &state.Diffusion, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Viscosity", &state.Viscosity, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
     if (ImGui::SliderInt("Size", &state.Size, 16, 256))
     {
         CreateCells();
@@ -1043,7 +1043,6 @@ int main(int argc, char** argv)
     for (int i = 0; i < PipelineTypeCount; i++)
     {
         SDL_ReleaseGPUComputePipeline(device, pipelines[i]);
-        pipelines[i] = nullptr;
     }
     ImGui_ImplSDLGPU3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
