@@ -1,2 +1,2 @@
-*.comp linguist-language=GLSL
+*.comp linguist-language=HLSL
 lib/** linguist-vendored

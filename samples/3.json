@@ -1,6 +1,4 @@
 {
-    "Diffusion": 0.0000512,
-    "Iterations": 10,
     "Spawners": [
         {
             "Position": [
@@ -27,8 +25,7 @@
                 63
             ],
             "Texture": 1,
-            "Value": 1.0
+            "Value": 2.0
         }
-    ],
-    "Viscosity": 0.000004
+    ]
 }

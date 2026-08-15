@@ -65,12 +65,9 @@ struct Spawner
 
 struct State
 {
-    int Iterations = 5;
-    float Diffusion = 0.000004f;
-    float Viscosity = 0.000004f;
     std::vector<Spawner> Spawners;
 
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(State, Iterations, Diffusion, Viscosity, Spawners)
+    NLOHMANN_DEFINE_TYPE_INTRUSIVE(State, Spawners)
 };
 
 struct RaymarchUniformBuffer
@@ -133,6 +130,9 @@ static ReadWriteTexture textures[TextureTypeCount];
 static SDL_GPUTexture* scratchTexture;
 static SDL_GPUSampler* sampler;
 static float speed = 16.0f;
+static int iterations = 7;
+static float diffusion = 0.0000512f;
+static float viscosity = 0.000004f;
 static float dyeStrength = 2.0f;
 static float brushRadius = 8.0f;
 static float brushStrength = 0.5f;
@@ -159,8 +159,10 @@ static std::mutex mutex;
 
 static bool Init()
 {
-    SDL_SetAppMetadata("Fluid Simulation", nullptr, nullptr);
+#ifndef NDEBUG
     SDL_SetLogPriorities(SDL_LOG_PRIORITY_VERBOSE);
+#endif
+    SDL_SetAppMetadata("Fluid Simulation", nullptr, nullptr);
     if (!SDL_Init(SDL_INIT_VIDEO))
     {
         SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
@@ -274,7 +276,6 @@ static bool Resize()
 
 static void UpdateViewProj()
 {
-    glm::vec3 forward;
     forward.x = std::cos(pitch) * std::cos(yaw);
     forward.y = std::sin(pitch);
     forward.z = std::cos(pitch) * std::sin(yaw);
@@ -526,9 +527,9 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     }
     ImGui::SeparatorText("Settings");
     ImGui::SliderFloat("Speed", &speed, 0.0f, 64.0f);
-    ImGui::SliderInt("Iterations", &state.Iterations, 1, 50);
-    ImGui::SliderFloat("Diffusion", &state.Diffusion, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
-    ImGui::SliderFloat("Viscosity", &state.Viscosity, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderInt("Iterations", &iterations, 1, 50);
+    ImGui::SliderFloat("Diffusion", &diffusion, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Viscosity", &viscosity, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
     ImGui::SliderFloat("Brush Radius", &brushRadius, 1.0f, 32.0f);
     ImGui::SliderFloat("Brush Strength", &brushStrength, 0.001f, 10.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
     ImGui::SliderFloat("Brush Dye", &brushDye, 0.0f, 32.0f);
@@ -792,7 +793,7 @@ static void Project(SDL_GPUCommandBuffer* commandBuffer)
     Project1(commandBuffer);
     Bnd(commandBuffer, textures[TextureTypeDivergence], 0);
     Bnd(commandBuffer, textures[TextureTypePressure], 0);
-    for (int i = 0; i < state.Iterations; i++)
+    for (int i = 0; i < iterations; i++)
     {
         Project2(commandBuffer, 0);
         Project2(commandBuffer, 1);
@@ -819,7 +820,7 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     destination.texture = scratchTexture;
     SDL_CopyGPUTextureToTexture(copyPass, &source, &destination, kSize, kSize, kSize, false);
     SDL_EndGPUCopyPass(copyPass);
-    for (int i = 0; i < state.Iterations; i++)
+    for (int i = 0; i < iterations; i++)
     {
         Diffuse1(commandBuffer, texture, diffusion, 0);
         Diffuse1(commandBuffer, texture, diffusion, 1);
@@ -952,9 +953,9 @@ static void Update()
     }
     if (cooldown <= 0)
     {
-        Diffuse(commandBuffer, textures[TextureTypeVelocityX], state.Viscosity, 1);
-        Diffuse(commandBuffer, textures[TextureTypeVelocityY], state.Viscosity, 2);
-        Diffuse(commandBuffer, textures[TextureTypeVelocityZ], state.Viscosity, 3);
+        Diffuse(commandBuffer, textures[TextureTypeVelocityX], viscosity, 1);
+        Diffuse(commandBuffer, textures[TextureTypeVelocityY], viscosity, 2);
+        Diffuse(commandBuffer, textures[TextureTypeVelocityZ], viscosity, 3);
         Project(commandBuffer);
         Advect1(commandBuffer, TextureTypeVelocityX);
         Advect1(commandBuffer, TextureTypeVelocityY);
@@ -966,7 +967,7 @@ static void Update()
         Bnd(commandBuffer, textures[TextureTypeVelocityY], 2);
         Bnd(commandBuffer, textures[TextureTypeVelocityZ], 3);
         Project(commandBuffer);
-        Diffuse(commandBuffer, textures[TextureTypeDensity], state.Diffusion, 0);
+        Diffuse(commandBuffer, textures[TextureTypeDensity], diffusion, 0);
         Advect2(commandBuffer);
         Bnd(commandBuffer, textures[TextureTypeDensity], 0);
         cooldown = kCooldown;

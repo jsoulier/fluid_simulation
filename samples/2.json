@@ -1,6 +1,4 @@
 {
-    "Diffusion": 0.0000512,
-    "Iterations": 10,
     "Spawners": [
         {
             "Position": [
@@ -9,26 +7,34 @@
                 63
             ],
             "Texture": 5,
-            "Value": 2.0
+            "Value": 3.0
         },
         {
             "Position": [
                 63,
+                63,
+                63
+            ],
+            "Texture": 0,
+            "Value": 1.0
+        },
+        {
+            "Position": [
+                63,
+                18,
+                63
+            ],
+            "Texture": 1,
+            "Value": 2.0
+        },
+        {
+            "Position": [
                 126,
+                99,
                 63
             ],
-            "Texture": 1,
-            "Value": -1.0
-        },
-        {
-            "Position": [
-                63,
-                1,
-                63
-            ],
-            "Texture": 1,
-            "Value": 2.0
+            "Texture": 0,
+            "Value": -2.0
         }
-    ],
-    "Viscosity": 0.000004
+    ]
 }
