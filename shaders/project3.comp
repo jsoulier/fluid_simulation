@@ -12,14 +12,13 @@ RWTexture3D<float> outVelocityY : register(u1, space1);
 RWTexture3D<float> outVelocityZ : register(u2, space1);
 
 [numthreads(THREADS, THREADS, THREADS)]
-void main(uint3 dispatchId : SV_DispatchThreadID)
+void main(int3 id : SV_DispatchThreadID)
 {
     uint width;
     uint height;
     uint depth;
     inPressure.GetDimensions(width, height, depth);
     int3 size = int3(width, height, depth);
-    int3 id = int3(dispatchId);
     if (any(id >= size - 1) || any(id <= int3(0, 0, 0)))
     {
         return;

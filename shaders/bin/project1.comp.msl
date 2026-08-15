@@ -9,22 +9,22 @@ kernel void main0(texture3d<float> inVelocityX [[texture(0)]], texture3d<float> 
     {
         uint3 _44 = uint3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
         int _48 = int(_44.x);
-        int3 _52 = int3(gl_GlobalInvocationID);
-        bool _61;
-        if (!any(_52 >= (int3(_48, int(_44.y), int(_44.z)) - int3(1))))
+        bool _60;
+        if (!any(int3(gl_GlobalInvocationID) >= (int3(_48, int(_44.y), int(_44.z)) - int3(1))))
         {
-            _61 = any(_52 <= int3(0));
+            _60 = any(int3(gl_GlobalInvocationID) <= int3(0));
         }
         else
         {
-            _61 = true;
+            _60 = true;
         }
-        if (_61)
+        if (_60)
         {
             break;
         }
-        outDivergence.write(float4(((-0.5) * (((((inVelocityX.read(uint3(int4(_52 + int3(1, 0, 0), 0).xyz), 0).x - inVelocityX.read(uint3(int4(_52 + int3(-1, 0, 0), 0).xyz), 0).x) + inVelocityY.read(uint3(int4(_52 + int3(0, 1, 0), 0).xyz), 0).x) - inVelocityY.read(uint3(int4(_52 + int3(0, -1, 0), 0).xyz), 0).x) + inVelocityZ.read(uint3(int4(_52 + int3(0, 0, 1), 0).xyz), 0).x) - inVelocityZ.read(uint3(int4(_52 + int3(0, 0, -1), 0).xyz), 0).x)) / float(_48)), uint3(gl_GlobalInvocationID));
-        outPressure.write(float4(0.0), uint3(gl_GlobalInvocationID));
+        uint3 _125 = uint3(int3(gl_GlobalInvocationID));
+        outDivergence.write(float4(((-0.5) * (((((inVelocityX.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(1, 0, 0), 0).xyz), 0).x - inVelocityX.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(-1, 0, 0), 0).xyz), 0).x) + inVelocityY.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, 1, 0), 0).xyz), 0).x) - inVelocityY.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, -1, 0), 0).xyz), 0).x) + inVelocityZ.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, 0, 1), 0).xyz), 0).x) - inVelocityZ.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, 0, -1), 0).xyz), 0).x)) / float(_48)), uint3(_125));
+        outPressure.write(float4(0.0), uint3(_125));
         break;
     } while(false);
 }

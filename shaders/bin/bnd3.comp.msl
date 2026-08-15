@@ -10,41 +10,41 @@ struct type_UniformBuffer
 
 kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float> inImage [[texture(0)]], texture3d<float, access::write> outImage [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
+    int3 _31 = int3(gl_GlobalInvocationID);
     do
     {
         uint3 _35 = uint3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
         int _39 = int(_35.x);
-        int3 _43 = int3(gl_GlobalInvocationID);
-        if (any(_43 >= int3(_39, int(_35.y), int(_35.z))))
+        if (any(_31 >= int3(_39, int(_35.y), int(_35.z))))
         {
             break;
         }
-        int3 _71;
-        float _72;
-        if (_43.x == 1)
+        int3 _70;
+        float _71;
+        if (_31.x == 1)
         {
-            int3 _54 = _43;
-            _54.x = _39 - 1;
-            _71 = _54;
-            _72 = inImage.read(uint3(int4(_39 - 2, _43.yz, 0).xyz), 0).x;
+            int3 _53 = _31;
+            _53.x = _39 - 1;
+            _70 = _53;
+            _71 = inImage.read(uint3(int4(_39 - 2, _31.yz, 0).xyz), 0).x;
         }
         else
         {
-            int3 _63 = _43;
-            _63.x = 0;
-            _71 = _63;
-            _72 = inImage.read(uint3(int4(1, _43.yz, 0).xyz), 0).x;
+            int3 _62 = _31;
+            _62.x = 0;
+            _70 = _62;
+            _71 = inImage.read(uint3(int4(1, _31.yz, 0).xyz), 0).x;
         }
-        float _80;
+        float _79;
         if (UniformBuffer.Type == 1u)
         {
-            _80 = -_72;
+            _79 = -_71;
         }
         else
         {
-            _80 = _72;
+            _79 = _71;
         }
-        outImage.write(float4(_80), uint3(uint3(_71)));
+        outImage.write(float4(_79), uint3(uint3(_70)));
         break;
     } while(false);
 }

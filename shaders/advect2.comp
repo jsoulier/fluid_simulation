@@ -13,14 +13,13 @@ Texture3D<float> inVelocityZ : register(t3, space0);
 RWTexture3D<float> outDensity : register(u0, space1);
 
 [numthreads(THREADS, THREADS, THREADS)]
-void main(uint3 dispatchId : SV_DispatchThreadID)
+void main(int3 id : SV_DispatchThreadID)
 {
     uint width;
     uint height;
     uint depth;
     inDensity.GetDimensions(width, height, depth);
     int3 size = int3(width, height, depth);
-    int3 id = int3(dispatchId);
     if (any(id >= size - 1) || any(id <= int3(0, 0, 0)))
     {
         return;

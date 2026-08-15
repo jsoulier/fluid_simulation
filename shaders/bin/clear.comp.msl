@@ -13,7 +13,7 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], text
     uint3 _24 = uint3(writeImage.get_width(), writeImage.get_height(), writeImage.get_depth());
     if (all(int3(gl_GlobalInvocationID) < int3(int(_24.x), int(_24.y), int(_24.z))))
     {
-        writeImage.write(float4(UniformBuffer.Value), uint3(gl_GlobalInvocationID));
+        writeImage.write(float4(UniformBuffer.Value), uint3(uint3(int3(gl_GlobalInvocationID))));
     }
 }
 

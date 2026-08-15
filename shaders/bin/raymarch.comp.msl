@@ -20,27 +20,26 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], text
         uint2 _80 = uint2(outColor.get_width(), outColor.get_height());
         uint _81 = _80.x;
         uint _82 = _80.y;
-        int2 _84 = int2(gl_GlobalInvocationID.xy);
-        if (any(_84 >= int2(int(_81), int(_82))))
+        if (any(int3(gl_GlobalInvocationID).xy >= int2(int(_81), int(_82))))
         {
             break;
         }
-        float2 _96 = float2(_84) / float2(float(_81), float(_82));
-        _96.y = 1.0 - _96.y;
-        float4 _107 = UniformBuffer.InverseProj * float4((_96 * 2.0) - float2(1.0), 0.0, 1.0);
-        float3 _119 = fast::normalize((UniformBuffer.InverseView * float4((_107 / float4(_107.w)).xyz, 0.0)).xyz);
-        float3 _124 = ((-float3(UniformBuffer.Position)) * 1.0) / _119;
-        float3 _125 = float3(int3(int(_71.x), int(_71.y), int(_71.z)));
-        float3 _128 = ((_125 - float3(UniformBuffer.Position)) * 1.0) / _119;
-        float3 _129 = precise::min(_124, _128);
-        float3 _130 = precise::max(_124, _128);
-        float _136 = precise::max(precise::max(precise::max(_129.x, _129.y), _129.z), 0.0);
-        float _141 = precise::min(precise::min(_130.x, _130.y), _130.z);
-        if ((isunordered(_141, _136) || _141 <= _136))
+        float2 _95 = float2(int3(gl_GlobalInvocationID).xy) / float2(float(_81), float(_82));
+        _95.y = 1.0 - _95.y;
+        float4 _106 = UniformBuffer.InverseProj * float4((_95 * 2.0) - float2(1.0), 0.0, 1.0);
+        float3 _118 = fast::normalize((UniformBuffer.InverseView * float4((_106 / float4(_106.w)).xyz, 0.0)).xyz);
+        float3 _123 = ((-float3(UniformBuffer.Position)) * 1.0) / _118;
+        float3 _124 = float3(int3(int(_71.x), int(_71.y), int(_71.z)));
+        float3 _127 = ((_124 - float3(UniformBuffer.Position)) * 1.0) / _118;
+        float3 _128 = precise::min(_123, _127);
+        float3 _129 = precise::max(_123, _127);
+        float _135 = precise::max(precise::max(precise::max(_128.x, _128.y), _128.z), 0.0);
+        float _140 = precise::min(precise::min(_129.x, _129.y), _129.z);
+        if ((isunordered(_140, _135) || _140 <= _135))
         {
-            outColor.write(float4(0.0), uint2(gl_GlobalInvocationID.xy));
+            outColor.write(float4(0.0), uint2(uint2(int3(gl_GlobalInvocationID).xy)));
         }
-        float _146 = _141 - _136;
+        float _146 = _140 - _135;
         int _149 = min((int(_146) + 1), 512);
         float _151 = _146 / float(_149);
         float4 _153;
@@ -52,7 +51,7 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], text
         {
             if (_156 < _149)
             {
-                float3 _167 = (float3(UniformBuffer.Position) + (_119 * (_136 + ((float(_156) + 0.5) * _151)))) / _125;
+                float3 _167 = (float3(UniformBuffer.Position) + (_118 * (_135 + ((float(_156) + 0.5) * _151)))) / _124;
                 float3 _431;
                 float _432;
                 if (UniformBuffer.Type == 6)
@@ -369,7 +368,7 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], text
                 break;
             }
         }
-        outColor.write(_444, uint2(gl_GlobalInvocationID.xy));
+        outColor.write(_444, uint2(uint2(int3(gl_GlobalInvocationID).xy)));
         break;
     } while(false);
 }

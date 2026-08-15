@@ -1,0 +1,57 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+template <typename ImageT>
+void spvImageFence(ImageT img) { img.fence(); }
+
+struct type_UniformBuffer
+{
+    packed_float3 Position;
+    float Radius;
+    packed_float3 Velocity;
+    float Dye;
+};
+
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float, access::read_write> inOutVelocityX [[texture(0)]], texture3d<float, access::read_write> inOutVelocityY [[texture(1)]], texture3d<float, access::read_write> inOutVelocityZ [[texture(2)]], texture3d<float, access::read_write> inOutDensity [[texture(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    do
+    {
+        uint3 _43 = uint3(inOutDensity.get_width(), inOutDensity.get_height(), inOutDensity.get_depth());
+        int3 _61 = (int3(rint(float3(UniformBuffer.Position))) - int3(int(ceil(UniformBuffer.Radius)))) + int3(gl_GlobalInvocationID);
+        bool _70;
+        if (!any(_61 >= (int3(int(_43.x), int(_43.y), int(_43.z)) - int3(1))))
+        {
+            _70 = any(_61 <= int3(0));
+        }
+        else
+        {
+            _70 = true;
+        }
+        if (_70)
+        {
+            break;
+        }
+        float _76 = length((float3(_61) + float3(0.5)) - float3(UniformBuffer.Position));
+        if (_76 > UniformBuffer.Radius)
+        {
+            break;
+        }
+        float _81 = 1.0 - (_76 / UniformBuffer.Radius);
+        float _82 = _81 * _81;
+        uint3 _86 = uint3(_61);
+        spvImageFence(inOutVelocityX);
+        inOutVelocityX.write(float4(inOutVelocityX.read(uint3(_86)).x + (UniformBuffer.Velocity[0] * _82)), uint3(_86));
+        spvImageFence(inOutVelocityY);
+        inOutVelocityY.write(float4(inOutVelocityY.read(uint3(_86)).x + (UniformBuffer.Velocity[1] * _82)), uint3(_86));
+        spvImageFence(inOutVelocityZ);
+        inOutVelocityZ.write(float4(inOutVelocityZ.read(uint3(_86)).x + (UniformBuffer.Velocity[2] * _82)), uint3(_86));
+        spvImageFence(inOutDensity);
+        inOutDensity.write(float4(inOutDensity.read(uint3(_86)).x + (UniformBuffer.Dye * _82)), uint3(_86));
+        break;
+    } while(false);
+}
+

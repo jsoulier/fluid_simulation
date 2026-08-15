@@ -5,14 +5,13 @@ Texture3D<float> inImage : register(t0, space0);
 RWTexture3D<float> outImage : register(u0, space1);
 
 [numthreads(8, 1, 1)]
-void main(uint3 dispatchId : SV_DispatchThreadID)
+void main(int3 id : SV_DispatchThreadID)
 {
     uint width;
     uint height;
     uint depth;
     inImage.GetDimensions(width, height, depth);
     int N = int(width);
-    uint id = dispatchId.x;
     int3 Positions[8] =
     {
         int3(0, 0, 0),
@@ -57,8 +56,8 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
         int3(N - 1, 0, N - 2),
         int3(N - 1, N - 1, N - 2)
     };
-    outImage[Positions[id]] = 0.33f * (
-        inImage.Load(int4(Neighbors1[id], 0)) +
-        inImage.Load(int4(Neighbors2[id], 0)) +
-        inImage.Load(int4(Neighbors3[id], 0)));
+    outImage[Positions[id.x]] = 0.33f * (
+        inImage.Load(int4(Neighbors1[id.x], 0)) +
+        inImage.Load(int4(Neighbors2[id.x], 0)) +
+        inImage.Load(int4(Neighbors3[id.x], 0)));
 }

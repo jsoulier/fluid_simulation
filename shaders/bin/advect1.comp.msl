@@ -17,13 +17,12 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
 {
     do
     {
-        uint3 _48 = uint3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
-        int _52 = int(_48.x);
-        int3 _56 = int3(gl_GlobalInvocationID);
+        uint3 _49 = uint3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
+        int _53 = int(_49.x);
         bool _65;
-        if (!any(_56 >= (int3(_52, int(_48.y), int(_48.z)) - int3(1))))
+        if (!any(int3(gl_GlobalInvocationID) >= (int3(_53, int(_49.y), int(_49.z)) - int3(1))))
         {
-            _65 = any(_56 <= int3(0));
+            _65 = any(int3(gl_GlobalInvocationID) <= int3(0));
         }
         else
         {
@@ -35,85 +34,82 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], cons
         }
         if (UniformBuffer.Velocity == 0u)
         {
-            float _82 = float(_52 - 2);
+            float _82 = float(_53 - 2);
             float _83 = UniformBuffer_1.DeltaTime * _82;
-            int _84 = _56.x;
-            int3 _88 = int4(_84, _56.yz, 0).xyz;
-            float _100 = _82 + 0.5;
-            float _101 = fast::clamp(float(_84) - (_83 * inVelocityX.read(uint3(_88), 0).x), 0.5, _100);
-            float _104 = fast::clamp(float(_56.y) - (_83 * inVelocityY.read(uint3(_88), 0).x), 0.5, _100);
-            float _107 = fast::clamp(float(_56.z) - (_83 * inVelocityZ.read(uint3(_88), 0).x), 0.5, _100);
-            float _108 = floor(_101);
-            float _110 = floor(_104);
-            float _112 = floor(_107);
-            float _114 = _101 - _108;
-            float _116 = _104 - _110;
-            float _117 = 1.0 - _116;
-            float _118 = _107 - _112;
-            float _119 = 1.0 - _118;
-            int _120 = int(_108);
-            int _121 = int(_108 + 1.0);
-            int _122 = int(_110);
-            int _123 = int(_110 + 1.0);
-            int _124 = int(_112);
-            int _125 = int(_112 + 1.0);
-            outVelocity.write(float4(((1.0 - _114) * ((_117 * ((_119 * inVelocityX.read(uint3(int4(_120, _122, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_120, _122, _125, 0).xyz), 0).x))) + (_116 * ((_119 * inVelocityX.read(uint3(int4(_120, _123, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_120, _123, _125, 0).xyz), 0).x))))) + (_114 * ((_117 * ((_119 * inVelocityX.read(uint3(int4(_121, _122, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_121, _122, _125, 0).xyz), 0).x))) + (_116 * ((_119 * inVelocityX.read(uint3(int4(_121, _123, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_121, _123, _125, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+            int3 _88 = int4(int3(gl_GlobalInvocationID), 0).xyz;
+            float _102 = _82 + 0.5;
+            float _103 = fast::clamp(float(int(gl_GlobalInvocationID.x)) - (_83 * inVelocityX.read(uint3(_88), 0).x), 0.5, _102);
+            float _108 = fast::clamp(float(int(gl_GlobalInvocationID.y)) - (_83 * inVelocityY.read(uint3(_88), 0).x), 0.5, _102);
+            float _113 = fast::clamp(float(int(gl_GlobalInvocationID.z)) - (_83 * inVelocityZ.read(uint3(_88), 0).x), 0.5, _102);
+            float _114 = floor(_103);
+            float _116 = floor(_108);
+            float _118 = floor(_113);
+            float _120 = _103 - _114;
+            float _122 = _108 - _116;
+            float _123 = 1.0 - _122;
+            float _124 = _113 - _118;
+            float _125 = 1.0 - _124;
+            int _126 = int(_114);
+            int _127 = int(_114 + 1.0);
+            int _128 = int(_116);
+            int _129 = int(_116 + 1.0);
+            int _130 = int(_118);
+            int _131 = int(_118 + 1.0);
+            outVelocity.write(float4(((1.0 - _120) * ((_123 * ((_125 * inVelocityX.read(uint3(int4(_126, _128, _130, 0).xyz), 0).x) + (_124 * inVelocityX.read(uint3(int4(_126, _128, _131, 0).xyz), 0).x))) + (_122 * ((_125 * inVelocityX.read(uint3(int4(_126, _129, _130, 0).xyz), 0).x) + (_124 * inVelocityX.read(uint3(int4(_126, _129, _131, 0).xyz), 0).x))))) + (_120 * ((_123 * ((_125 * inVelocityX.read(uint3(int4(_127, _128, _130, 0).xyz), 0).x) + (_124 * inVelocityX.read(uint3(int4(_127, _128, _131, 0).xyz), 0).x))) + (_122 * ((_125 * inVelocityX.read(uint3(int4(_127, _129, _130, 0).xyz), 0).x) + (_124 * inVelocityX.read(uint3(int4(_127, _129, _131, 0).xyz), 0).x)))))), uint3(uint3(int3(gl_GlobalInvocationID))));
         }
         else
         {
             if (UniformBuffer.Velocity == 1u)
             {
-                float _191 = float(_52 - 2);
-                float _192 = UniformBuffer_1.DeltaTime * _191;
-                int _193 = _56.x;
-                int3 _197 = int4(_193, _56.yz, 0).xyz;
-                float _209 = _191 + 0.5;
-                float _210 = fast::clamp(float(_193) - (_192 * inVelocityX.read(uint3(_197), 0).x), 0.5, _209);
-                float _213 = fast::clamp(float(_56.y) - (_192 * inVelocityY.read(uint3(_197), 0).x), 0.5, _209);
-                float _216 = fast::clamp(float(_56.z) - (_192 * inVelocityZ.read(uint3(_197), 0).x), 0.5, _209);
-                float _217 = floor(_210);
-                float _219 = floor(_213);
-                float _221 = floor(_216);
-                float _223 = _210 - _217;
-                float _225 = _213 - _219;
-                float _226 = 1.0 - _225;
-                float _227 = _216 - _221;
-                float _228 = 1.0 - _227;
-                int _229 = int(_217);
-                int _230 = int(_217 + 1.0);
-                int _231 = int(_219);
-                int _232 = int(_219 + 1.0);
-                int _233 = int(_221);
-                int _234 = int(_221 + 1.0);
-                outVelocity.write(float4(((1.0 - _223) * ((_226 * ((_228 * inVelocityY.read(uint3(int4(_229, _231, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_229, _231, _234, 0).xyz), 0).x))) + (_225 * ((_228 * inVelocityY.read(uint3(int4(_229, _232, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_229, _232, _234, 0).xyz), 0).x))))) + (_223 * ((_226 * ((_228 * inVelocityY.read(uint3(int4(_230, _231, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_230, _231, _234, 0).xyz), 0).x))) + (_225 * ((_228 * inVelocityY.read(uint3(int4(_230, _232, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_230, _232, _234, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+                float _198 = float(_53 - 2);
+                float _199 = UniformBuffer_1.DeltaTime * _198;
+                int3 _204 = int4(int3(gl_GlobalInvocationID), 0).xyz;
+                float _218 = _198 + 0.5;
+                float _219 = fast::clamp(float(int(gl_GlobalInvocationID.x)) - (_199 * inVelocityX.read(uint3(_204), 0).x), 0.5, _218);
+                float _224 = fast::clamp(float(int(gl_GlobalInvocationID.y)) - (_199 * inVelocityY.read(uint3(_204), 0).x), 0.5, _218);
+                float _229 = fast::clamp(float(int(gl_GlobalInvocationID.z)) - (_199 * inVelocityZ.read(uint3(_204), 0).x), 0.5, _218);
+                float _230 = floor(_219);
+                float _232 = floor(_224);
+                float _234 = floor(_229);
+                float _236 = _219 - _230;
+                float _238 = _224 - _232;
+                float _239 = 1.0 - _238;
+                float _240 = _229 - _234;
+                float _241 = 1.0 - _240;
+                int _242 = int(_230);
+                int _243 = int(_230 + 1.0);
+                int _244 = int(_232);
+                int _245 = int(_232 + 1.0);
+                int _246 = int(_234);
+                int _247 = int(_234 + 1.0);
+                outVelocity.write(float4(((1.0 - _236) * ((_239 * ((_241 * inVelocityY.read(uint3(int4(_242, _244, _246, 0).xyz), 0).x) + (_240 * inVelocityY.read(uint3(int4(_242, _244, _247, 0).xyz), 0).x))) + (_238 * ((_241 * inVelocityY.read(uint3(int4(_242, _245, _246, 0).xyz), 0).x) + (_240 * inVelocityY.read(uint3(int4(_242, _245, _247, 0).xyz), 0).x))))) + (_236 * ((_239 * ((_241 * inVelocityY.read(uint3(int4(_243, _244, _246, 0).xyz), 0).x) + (_240 * inVelocityY.read(uint3(int4(_243, _244, _247, 0).xyz), 0).x))) + (_238 * ((_241 * inVelocityY.read(uint3(int4(_243, _245, _246, 0).xyz), 0).x) + (_240 * inVelocityY.read(uint3(int4(_243, _245, _247, 0).xyz), 0).x)))))), uint3(uint3(int3(gl_GlobalInvocationID))));
             }
             else
             {
                 if (UniformBuffer.Velocity == 2u)
                 {
-                    float _299 = float(_52 - 2);
-                    float _300 = UniformBuffer_1.DeltaTime * _299;
-                    int _301 = _56.x;
-                    int3 _305 = int4(_301, _56.yz, 0).xyz;
-                    float _317 = _299 + 0.5;
-                    float _318 = fast::clamp(float(_301) - (_300 * inVelocityX.read(uint3(_305), 0).x), 0.5, _317);
-                    float _321 = fast::clamp(float(_56.y) - (_300 * inVelocityY.read(uint3(_305), 0).x), 0.5, _317);
-                    float _324 = fast::clamp(float(_56.z) - (_300 * inVelocityZ.read(uint3(_305), 0).x), 0.5, _317);
-                    float _325 = floor(_318);
-                    float _327 = floor(_321);
-                    float _329 = floor(_324);
-                    float _331 = _318 - _325;
-                    float _333 = _321 - _327;
-                    float _334 = 1.0 - _333;
-                    float _335 = _324 - _329;
-                    float _336 = 1.0 - _335;
-                    int _337 = int(_325);
-                    int _338 = int(_325 + 1.0);
-                    int _339 = int(_327);
-                    int _340 = int(_327 + 1.0);
-                    int _341 = int(_329);
-                    int _342 = int(_329 + 1.0);
-                    outVelocity.write(float4(((1.0 - _331) * ((_334 * ((_336 * inVelocityZ.read(uint3(int4(_337, _339, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_337, _339, _342, 0).xyz), 0).x))) + (_333 * ((_336 * inVelocityZ.read(uint3(int4(_337, _340, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_337, _340, _342, 0).xyz), 0).x))))) + (_331 * ((_334 * ((_336 * inVelocityZ.read(uint3(int4(_338, _339, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_338, _339, _342, 0).xyz), 0).x))) + (_333 * ((_336 * inVelocityZ.read(uint3(int4(_338, _340, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_338, _340, _342, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+                    float _313 = float(_53 - 2);
+                    float _314 = UniformBuffer_1.DeltaTime * _313;
+                    int3 _319 = int4(int3(gl_GlobalInvocationID), 0).xyz;
+                    float _333 = _313 + 0.5;
+                    float _334 = fast::clamp(float(int(gl_GlobalInvocationID.x)) - (_314 * inVelocityX.read(uint3(_319), 0).x), 0.5, _333);
+                    float _339 = fast::clamp(float(int(gl_GlobalInvocationID.y)) - (_314 * inVelocityY.read(uint3(_319), 0).x), 0.5, _333);
+                    float _344 = fast::clamp(float(int(gl_GlobalInvocationID.z)) - (_314 * inVelocityZ.read(uint3(_319), 0).x), 0.5, _333);
+                    float _345 = floor(_334);
+                    float _347 = floor(_339);
+                    float _349 = floor(_344);
+                    float _351 = _334 - _345;
+                    float _353 = _339 - _347;
+                    float _354 = 1.0 - _353;
+                    float _355 = _344 - _349;
+                    float _356 = 1.0 - _355;
+                    int _357 = int(_345);
+                    int _358 = int(_345 + 1.0);
+                    int _359 = int(_347);
+                    int _360 = int(_347 + 1.0);
+                    int _361 = int(_349);
+                    int _362 = int(_349 + 1.0);
+                    outVelocity.write(float4(((1.0 - _351) * ((_354 * ((_356 * inVelocityZ.read(uint3(int4(_357, _359, _361, 0).xyz), 0).x) + (_355 * inVelocityZ.read(uint3(int4(_357, _359, _362, 0).xyz), 0).x))) + (_353 * ((_356 * inVelocityZ.read(uint3(int4(_357, _360, _361, 0).xyz), 0).x) + (_355 * inVelocityZ.read(uint3(int4(_357, _360, _362, 0).xyz), 0).x))))) + (_351 * ((_354 * ((_356 * inVelocityZ.read(uint3(int4(_358, _359, _361, 0).xyz), 0).x) + (_355 * inVelocityZ.read(uint3(int4(_358, _359, _362, 0).xyz), 0).x))) + (_353 * ((_356 * inVelocityZ.read(uint3(int4(_358, _360, _361, 0).xyz), 0).x) + (_355 * inVelocityZ.read(uint3(int4(_358, _360, _362, 0).xyz), 0).x)))))), uint3(uint3(int3(gl_GlobalInvocationID))));
                 }
             }
         }

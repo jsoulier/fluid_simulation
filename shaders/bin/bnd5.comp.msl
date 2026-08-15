@@ -8,21 +8,20 @@ kernel void main0(texture3d<float> inImage [[texture(0)]], texture3d<float, acce
     do
     {
         uint3 _32 = uint3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
-        int3 _40 = int3(gl_GlobalInvocationID);
-        bool _49;
-        if (!any(_40 >= (int3(int(_32.x), int(_32.y), int(_32.z)) - int3(1))))
+        bool _48;
+        if (!any(int3(gl_GlobalInvocationID) >= (int3(int(_32.x), int(_32.y), int(_32.z)) - int3(1))))
         {
-            _49 = any(_40 <= int3(0));
+            _48 = any(int3(gl_GlobalInvocationID) <= int3(0));
         }
         else
         {
-            _49 = true;
+            _48 = true;
         }
-        if (_49)
+        if (_48)
         {
             break;
         }
-        outImage.write(float4(inImage.read(uint3(int4(_40, 0).xyz), 0).x), uint3(gl_GlobalInvocationID));
+        outImage.write(float4(inImage.read(uint3(int4(int3(gl_GlobalInvocationID), 0).xyz), 0).x), uint3(uint3(int3(gl_GlobalInvocationID))));
         break;
     } while(false);
 }

@@ -83,6 +83,14 @@ struct RaymarchUniformBuffer
     float Padding[3];
 };
 
+struct BrushUniformBuffer
+{
+    glm::vec3 Position;
+    float Radius;
+    glm::vec3 Velocity;
+    float Dye;
+};
+
 enum PipelineType
 {
     PipelineTypeAdd1,
@@ -98,31 +106,40 @@ enum PipelineType
     PipelineTypeBnd3,
     PipelineTypeBnd4,
     PipelineTypeBnd5,
+    PipelineTypeBrush,
     PipelineTypeRaymarch,
     PipelineTypeCount,
 };
 
 static constexpr int kSize = 128;
-static constexpr int kWidth = 480;
-static constexpr int kHeight = 360;
+static constexpr float kWidth = 480.0f;
 static constexpr float kZoom = 20.0f;
 static constexpr float kPan = 0.005f;
 static constexpr float kFov = glm::radians(60.0f);
 static constexpr float kNear = 0.1f;
 static constexpr float kFar = 1000.0f;
 static constexpr float kCooldown = 16.0f;
+static constexpr float kEpsilon = 0.0001f;
 
 static SDL_Window* window;
 static SDL_GPUDevice* device;
 static SDL_GPUComputePipeline* pipelines[PipelineTypeCount];
 static SDL_GPUTexture* colorTexture;
-static uint32_t width;
-static uint32_t height;
+static uint32_t colorWidth;
+static uint32_t colorHeight;
+static uint32_t swapchainWidth;
+static uint32_t swapchainHeight;
 static ReadWriteTexture textures[TextureTypeCount];
 static SDL_GPUTexture* scratchTexture;
 static SDL_GPUSampler* sampler;
 static float speed = 16.0f;
 static float dyeStrength = 2.0f;
+static float brushRadius = 8.0f;
+static float brushStrength = 0.5f;
+static float brushDye = 1.0f;
+static bool brushActive;
+static glm::vec3 brushPosition;
+static glm::vec3 brushVelocity;
 static int cooldown;
 static uint64_t time1;
 static uint64_t time2;
@@ -130,6 +147,7 @@ static float pitch;
 static float yaw;
 static float distance = 200.0f;
 static glm::vec3 position;
+static glm::vec3 forward;
 static glm::mat4 view;
 static glm::mat4 proj;
 static glm::mat4 inverseView;
@@ -197,26 +215,7 @@ static bool CreateSamplers()
     return true;
 }
 
-static bool CreateTextures()
-{
-    SDL_GPUTextureCreateInfo info{};
-    info.type = SDL_GPU_TEXTURETYPE_2D;
-    info.width = kWidth;
-    info.height = kHeight;
-    info.layer_count_or_depth = 1;
-    info.num_levels = 1;
-    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-    info.usage = SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_TEXTUREUSAGE_SAMPLER;
-    colorTexture = SDL_CreateGPUTexture(device, &info);
-    if (!colorTexture)
-    {
-        SDL_Log("Failed to create texture: %s", SDL_GetError());
-        return false;
-    }
-    return true;
-}
-
-bool CreatePipelines()
+static bool CreatePipelines()
 {
     pipelines[PipelineTypeAdd1] = LoadComputePipeline(device, "add1.comp");
     pipelines[PipelineTypeClear] = LoadComputePipeline(device, "clear.comp");
@@ -231,6 +230,7 @@ bool CreatePipelines()
     pipelines[PipelineTypeBnd3] = LoadComputePipeline(device, "bnd3.comp");
     pipelines[PipelineTypeBnd4] = LoadComputePipeline(device, "bnd4.comp");
     pipelines[PipelineTypeBnd5] = LoadComputePipeline(device, "bnd5.comp");
+    pipelines[PipelineTypeBrush] = LoadComputePipeline(device, "brush.comp");
     pipelines[PipelineTypeRaymarch] = LoadComputePipeline(device, "raymarch.comp");
     for (int i = PipelineTypeCount - 1; i >= 0; i--)
     {
@@ -243,20 +243,84 @@ bool CreatePipelines()
     return true;
 }
 
+static bool Resize()
+{
+    float ratio = float(swapchainWidth) / swapchainHeight;
+    uint32_t width = kWidth;
+    uint32_t height = kWidth / ratio;
+    if (colorWidth == width && colorHeight == height)
+    {
+        return true;
+    }
+    colorWidth = width;
+    colorHeight = height;
+    SDL_ReleaseGPUTexture(device, colorTexture);
+    SDL_GPUTextureCreateInfo info{};
+    info.type = SDL_GPU_TEXTURETYPE_2D;
+    info.width = colorWidth;
+    info.height = colorHeight;
+    info.layer_count_or_depth = 1;
+    info.num_levels = 1;
+    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    info.usage = SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_WRITE | SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    colorTexture = SDL_CreateGPUTexture(device, &info);
+    if (!colorTexture)
+    {
+        SDL_Log("Failed to create texture: %s", SDL_GetError());
+        return false;
+    }
+    return true;
+}
+
 static void UpdateViewProj()
 {
-    glm::vec3 vector;
-    vector.x = std::cos(pitch) * std::cos(yaw);
-    vector.y = std::sin(pitch);
-    vector.z = std::cos(pitch) * std::sin(yaw);
-    float ratio = static_cast<float>(kWidth) / kHeight;
+    glm::vec3 forward;
+    forward.x = std::cos(pitch) * std::cos(yaw);
+    forward.y = std::sin(pitch);
+    forward.z = std::cos(pitch) * std::sin(yaw);
+    float ratio = float(colorWidth) / colorHeight;
     glm::vec3 center = glm::vec3(kSize / 2);
-    position = center - vector * distance;
-    view = glm::lookAt(position, position + vector, {0.0f, 1.0f, 0.0f});
+    position = center - forward * distance;
+    view = glm::lookAt(position, position + forward, {0.0f, 1.0f, 0.0f});
     proj = glm::perspective(kFov, ratio, kNear, kFar);
     inverseView = glm::inverse(view);
     inverseProj = glm::inverse(proj);
     viewProj = proj * view;
+}
+
+static void UpdateBrush(float mouseX, float mouseY, float deltaX, float deltaY)
+{
+    if (!swapchainWidth || !swapchainHeight)
+    {
+        return;
+    }
+    float u = mouseX / swapchainWidth;
+    float v = mouseY / swapchainHeight;
+    if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
+    {
+        return;
+    }
+    glm::vec4 ndc = {u * 2.0f - 1.0f, 1.0f - v * 2.0f, 0.0f, 1.0f};
+    glm::vec4 ray = inverseProj * ndc;
+    ray /= ray.w;
+    ray = inverseView * glm::vec4(glm::vec3(ray), 0.0f);
+    glm::vec3 direction = glm::normalize(glm::vec3(ray));
+    float denominator = glm::dot(direction, forward);
+    if (std::abs(denominator) < kEpsilon)
+    {
+        return;
+    }
+    glm::vec3 center = glm::vec3(kSize / 2);
+    glm::vec3 hit = position + direction * (glm::dot(center - position, forward) / denominator);
+    if (glm::any(glm::lessThan(hit, glm::vec3(0.0f))) || glm::any(glm::greaterThanEqual(hit, glm::vec3(kSize))))
+    {
+        return;
+    }
+    glm::vec3 right = glm::normalize(glm::cross(forward, {0.0f, 1.0f, 0.0f}));
+    glm::vec3 up = glm::cross(right, forward);
+    brushPosition = hit;
+    brushVelocity += (right * deltaX - up * deltaY) * brushStrength;
+    brushActive = true;
 }
 
 static void Add1(SDL_GPUCommandBuffer* commandBuffer, TextureType texture, const glm::ivec3& position, float value)
@@ -439,8 +503,8 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
 {
     DebugGroup(commandBuffer);
     ImGuiIO& io = ImGui::GetIO();
-    io.DisplaySize.x = width;
-    io.DisplaySize.y = height;
+    io.DisplaySize.x = swapchainWidth;
+    io.DisplaySize.y = swapchainHeight;
     ImGui_ImplSDLGPU3_NewFrame();
     ImGui::NewFrame();
     ImGui::Begin("Fluid Simulation");
@@ -465,7 +529,9 @@ static void UpdateImGui(SDL_GPUCommandBuffer* commandBuffer)
     ImGui::SliderInt("Iterations", &state.Iterations, 1, 50);
     ImGui::SliderFloat("Diffusion", &state.Diffusion, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
     ImGui::SliderFloat("Viscosity", &state.Viscosity, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
-    ImGui::SeparatorText("Viewer");
+    ImGui::SliderFloat("Brush Radius", &brushRadius, 1.0f, 32.0f);
+    ImGui::SliderFloat("Brush Strength", &brushStrength, 0.001f, 10.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
+    ImGui::SliderFloat("Brush Dye", &brushDye, 0.0f, 32.0f);
     ImGui::SliderFloat("Dye Strength", &dyeStrength, 0.001f, 100.0f, "%.4f", ImGuiSliderFlags_Logarithmic);
     for (int i = 0; i < SDL_arraysize(Textures); i++)
     {
@@ -761,6 +827,33 @@ static void Diffuse(SDL_GPUCommandBuffer* commandBuffer, ReadWriteTexture& textu
     }
 }
 
+static void Brush(SDL_GPUCommandBuffer* commandBuffer)
+{
+    DebugGroup(commandBuffer);
+    SDL_GPUStorageTextureReadWriteBinding readWriteTextureBindings[4]{};
+    readWriteTextureBindings[0].texture = textures[TextureTypeVelocityX].GetReadTexture();
+    readWriteTextureBindings[1].texture = textures[TextureTypeVelocityY].GetReadTexture();
+    readWriteTextureBindings[2].texture = textures[TextureTypeVelocityZ].GetReadTexture();
+    readWriteTextureBindings[3].texture = textures[TextureTypeDensity].GetReadTexture();
+    SDL_GPUComputePass* computePass = SDL_BeginGPUComputePass(commandBuffer, readWriteTextureBindings, 4, nullptr, 0);
+    if (!computePass)
+    {
+        SDL_Log("Failed to begin compute pass: %s", SDL_GetError());
+        return;
+    }
+    BrushUniformBuffer uniform{};
+    uniform.Position = brushPosition;
+    uniform.Radius = brushRadius;
+    uniform.Velocity = brushVelocity;
+    uniform.Dye = brushDye;
+    int extent = 2 * std::ceil(brushRadius) + 1;
+    int groups = (extent + THREADS - 1) / THREADS;
+    SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeBrush]);
+    SDL_PushGPUComputeUniformData(commandBuffer, 0, &uniform, sizeof(uniform));
+    SDL_DispatchGPUCompute(computePass, groups, groups, groups);
+    SDL_EndGPUComputePass(computePass);
+}
+
 static void Render(SDL_GPUCommandBuffer* commandBuffer)
 {
     DebugGroup(commandBuffer);
@@ -784,8 +877,8 @@ static void Render(SDL_GPUCommandBuffer* commandBuffer)
     uniform.Position = position;
     uniform.DyeStrength = dyeStrength;
     uniform.Type = texture;
-    int groupsX = (kWidth + THREADS - 1) / THREADS;
-    int groupsY = (kHeight + THREADS - 1) / THREADS;
+    int groupsX = (colorWidth + THREADS - 1) / THREADS;
+    int groupsY = (colorHeight + THREADS - 1) / THREADS;
     SDL_BindGPUComputePipeline(computePass, pipelines[PipelineTypeRaymarch]);
     SDL_BindGPUComputeSamplers(computePass, 0, textureBindings, TextureTypeCount);
     SDL_PushGPUComputeUniformData(commandBuffer, 0, &uniform, sizeof(uniform));
@@ -793,44 +886,17 @@ static void Render(SDL_GPUCommandBuffer* commandBuffer)
     SDL_EndGPUComputePass(computePass);
 }
 
-static void Letterbox(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
+static void Blit(SDL_GPUCommandBuffer* commandBuffer, SDL_GPUTexture* swapchainTexture)
 {
     DebugGroup(commandBuffer);
     SDL_GPUBlitInfo info{};
-    const float colorRatio = float(kWidth) / kHeight;
-    const float swapchainRatio = float(width) / height;
-    float scale = 0.0f;
-    float letterboxW = 0.0f;
-    float letterboxH = 0.0f;
-    float letterboxX = 0.0f;
-    float letterboxY = 0.0f;
-    if (colorRatio > swapchainRatio)
-    {
-        scale = float(width) / kWidth;
-        letterboxW = width;
-        letterboxH = kHeight * scale;
-        letterboxX = 0.0f;
-        letterboxY = (height - letterboxH) / 2.0f;
-    }
-    else
-    {
-        scale = float(height) / kHeight;
-        letterboxH = height;
-        letterboxW = kWidth * scale;
-        letterboxX = (width - letterboxW) / 2.0f;
-        letterboxY = 0.0f;
-    }
-    SDL_FColor clearColor = {0.02f, 0.02f, 0.02f, 1.0f};
-    info.load_op = SDL_GPU_LOADOP_CLEAR;
-    info.clear_color = clearColor;
+    info.load_op = SDL_GPU_LOADOP_DONT_CARE;
     info.source.texture = colorTexture;
-    info.source.w = kWidth;
-    info.source.h = kHeight;
+    info.source.w = colorWidth;
+    info.source.h = colorHeight;
     info.destination.texture = swapchainTexture;
-    info.destination.x = letterboxX;
-    info.destination.y = letterboxY;
-    info.destination.w = letterboxW;
-    info.destination.h = letterboxH;
+    info.destination.w = swapchainWidth;
+    info.destination.h = swapchainHeight;
     info.filter = SDL_GPU_FILTER_NEAREST;
     SDL_BlitGPUTexture(commandBuffer, &info);
 }
@@ -860,19 +926,30 @@ static void Update()
         return;
     }
     SDL_GPUTexture* swapchainTexture;
-    if (!SDL_WaitAndAcquireGPUSwapchainTexture(commandBuffer, window, &swapchainTexture, &width, &height))
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(commandBuffer, window, &swapchainTexture, &swapchainWidth, &swapchainHeight))
     {
         SDL_Log("Failed to acquire swapchain texture: %s", SDL_GetError());
         SDL_CancelGPUCommandBuffer(commandBuffer);
         return;
     }
-    if (!swapchainTexture || !width || !height)
+    if (!swapchainTexture || !swapchainWidth || !swapchainHeight)
+    {
+        SDL_CancelGPUCommandBuffer(commandBuffer);
+        return;
+    }
+    if (!Resize())
     {
         SDL_CancelGPUCommandBuffer(commandBuffer);
         return;
     }
     UpdateImGui(commandBuffer);
     UpdateViewProj();
+    if (brushActive)
+    {
+        Brush(commandBuffer);
+        brushVelocity = glm::vec3(0.0f);
+        brushActive = false;
+    }
     if (cooldown <= 0)
     {
         Diffuse(commandBuffer, textures[TextureTypeVelocityX], state.Viscosity, 1);
@@ -895,7 +972,7 @@ static void Update()
         cooldown = kCooldown;
     }
     Render(commandBuffer);
-    Letterbox(commandBuffer, swapchainTexture);
+    Blit(commandBuffer, swapchainTexture);
     RenderImGui(commandBuffer, swapchainTexture);
     SDL_SubmitGPUCommandBuffer(commandBuffer);
 }
@@ -915,11 +992,6 @@ int main(int argc, char** argv)
     if (!CreateSamplers())
     {
         SDL_Log("Failed to create samplers");
-        return 1;
-    }
-    if (!CreateTextures())
-    {
-        SDL_Log("Failed to create textures");
         return 1;
     }
     if (argc > 1)
@@ -963,12 +1035,16 @@ int main(int argc, char** argv)
                 distance = std::max(1.0f, distance - event.wheel.y * kZoom);
                 break;
             case SDL_EVENT_MOUSE_MOTION:
-                if (event.motion.state & (SDL_BUTTON_LMASK | SDL_BUTTON_RMASK))
+                if (event.motion.state & SDL_BUTTON_LMASK)
                 {
                     float limit = glm::pi<float>() / 2.0f - 0.01f;
                     yaw += event.motion.xrel * kPan;
                     pitch -= event.motion.yrel * kPan;
                     pitch = std::clamp(pitch, -limit, limit);
+                }
+                if (event.motion.state & SDL_BUTTON_RMASK)
+                {
+                    UpdateBrush(event.motion.x, event.motion.y, event.motion.xrel, event.motion.yrel);
                 }
                 break;
             case SDL_EVENT_KEY_DOWN:

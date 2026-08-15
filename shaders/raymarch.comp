@@ -44,7 +44,7 @@ bool HitBox(float3 origin, float3 direction, int3 size, out float tMin, out floa
 }
 
 [numthreads(THREADS, THREADS, 1)]
-void main(uint3 dispatchId : SV_DispatchThreadID)
+void main(int3 id : SV_DispatchThreadID)
 {
     uint sizeX;
     uint sizeY;
@@ -54,18 +54,17 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
     uint width;
     uint height;
     outColor.GetDimensions(width, height);
-    int2 id = int2(dispatchId.xy);
-    if (any(id >= int2(width, height)))
+    if (any(id.xy >= int2(width, height)))
     {
         return;
     }
-    float3 direction = GetDirection(id, width, height);
+    float3 direction = GetDirection(id.xy, width, height);
     float tMin;
     float tMax;
     float4 result = float4(0.0f, 0.0f, 0.0f, 0.0f);
     if (!HitBox(Position, direction, size, tMin, tMax))
     {
-        outColor[id] = result;
+        outColor[id.xy] = result;
     }
     int steps = min(int((tMax - tMin) / kStepSize) + 1, kMaxSteps);
     float stepSize = (tMax - tMin) / float(steps);
@@ -101,5 +100,5 @@ void main(uint3 dispatchId : SV_DispatchThreadID)
             break;
         }
     }
-    outColor[id] = result;
+    outColor[id.xy] = result;
 }

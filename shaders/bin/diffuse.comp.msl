@@ -25,37 +25,36 @@ struct type_UniformBuffer_2
 
 kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], constant type_UniformBuffer_1& UniformBuffer_1 [[buffer(1)]], constant type_UniformBuffer_2& UniformBuffer_2 [[buffer(2)]], texture3d<float> inSource [[texture(0)]], texture3d<float, access::read_write> inOutImage [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
+    int3 _49 = int3(gl_GlobalInvocationID);
     do
     {
         uint3 _53 = uint3(inOutImage.get_width(), inOutImage.get_height(), inOutImage.get_depth());
         int _57 = int(_53.x);
-        int3 _61 = int3(gl_GlobalInvocationID);
-        int _64 = _61.y;
-        int _72 = (2 * _61.x) + (((_64 + _61.z) + int(UniformBuffer_2.Phase)) & 1);
-        int3 _73 = _61;
-        _73.x = _72;
-        bool _82;
-        if (!any(_73 >= (int3(_57, int(_53.y), int(_53.z)) - int3(1))))
+        int _71 = (2 * _49.x) + (((_49.y + _49.z) + int(UniformBuffer_2.Phase)) & 1);
+        int3 _72 = _49;
+        _72.x = _71;
+        bool _81;
+        if (!any(_72 >= (int3(_57, int(_53.y), int(_53.z)) - int3(1))))
         {
-            _82 = any(_73 <= int3(0));
+            _81 = any(_72 <= int3(0));
         }
         else
         {
-            _82 = true;
+            _81 = true;
         }
-        if (_82)
+        if (_81)
         {
             break;
         }
-        float _91 = float(_57 - 2);
-        float _93 = ((UniformBuffer.DeltaTime * UniformBuffer_1.Diffusion) * _91) * _91;
+        float _90 = float(_57 - 2);
+        float _92 = ((UniformBuffer.DeltaTime * UniformBuffer_1.Diffusion) * _90) * _90;
         spvImageFence(inOutImage);
         spvImageFence(inOutImage);
         spvImageFence(inOutImage);
         spvImageFence(inOutImage);
         spvImageFence(inOutImage);
         spvImageFence(inOutImage);
-        inOutImage.write(float4((inSource.read(uint3(int4(_72, _64, _61.z, 0).xyz), 0).x + (_93 * (((((inOutImage.read(uint3(uint3(_73 + int3(1, 0, 0)))).x + inOutImage.read(uint3(uint3(_73 + int3(-1, 0, 0)))).x) + inOutImage.read(uint3(uint3(_73 + int3(0, 1, 0)))).x) + inOutImage.read(uint3(uint3(_73 + int3(0, -1, 0)))).x) + inOutImage.read(uint3(uint3(_73 + int3(0, 0, 1)))).x) + inOutImage.read(uint3(uint3(_73 + int3(0, 0, -1)))).x))) / (1.0 + (6.0 * _93))), uint3(uint3(_73)));
+        inOutImage.write(float4((inSource.read(uint3(int4(_71, _49.yz, 0).xyz), 0).x + (_92 * (((((inOutImage.read(uint3(uint3(_72 + int3(1, 0, 0)))).x + inOutImage.read(uint3(uint3(_72 + int3(-1, 0, 0)))).x) + inOutImage.read(uint3(uint3(_72 + int3(0, 1, 0)))).x) + inOutImage.read(uint3(uint3(_72 + int3(0, -1, 0)))).x) + inOutImage.read(uint3(uint3(_72 + int3(0, 0, 1)))).x) + inOutImage.read(uint3(uint3(_72 + int3(0, 0, -1)))).x))) / (1.0 + (6.0 * _92))), uint3(uint3(_72)));
         break;
     } while(false);
 }

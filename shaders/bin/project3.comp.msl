@@ -9,25 +9,25 @@ kernel void main0(texture3d<float> inPressure [[texture(0)]], texture3d<float> i
     {
         uint3 _45 = uint3(inPressure.get_width(), inPressure.get_height(), inPressure.get_depth());
         int _49 = int(_45.x);
-        int3 _53 = int3(gl_GlobalInvocationID);
-        bool _62;
-        if (!any(_53 >= (int3(_49, int(_45.y), int(_45.z)) - int3(1))))
+        bool _61;
+        if (!any(int3(gl_GlobalInvocationID) >= (int3(_49, int(_45.y), int(_45.z)) - int3(1))))
         {
-            _62 = any(_53 <= int3(0));
+            _61 = any(int3(gl_GlobalInvocationID) <= int3(0));
         }
         else
         {
-            _62 = true;
+            _61 = true;
         }
-        if (_62)
+        if (_61)
         {
             break;
         }
-        int3 _69 = int4(_53, 0).xyz;
-        float _93 = float(_49);
-        outVelocityX.write(float4(inVelocityX.read(uint3(_69), 0).x - ((0.5 * (inPressure.read(uint3(int4(_53 + int3(1, 0, 0), 0).xyz), 0).x - inPressure.read(uint3(int4(_53 + int3(-1, 0, 0), 0).xyz), 0).x)) * _93)), uint3(gl_GlobalInvocationID));
-        outVelocityY.write(float4(inVelocityY.read(uint3(_69), 0).x - ((0.5 * (inPressure.read(uint3(int4(_53 + int3(0, 1, 0), 0).xyz), 0).x - inPressure.read(uint3(int4(_53 + int3(0, -1, 0), 0).xyz), 0).x)) * _93)), uint3(gl_GlobalInvocationID));
-        outVelocityZ.write(float4(inVelocityZ.read(uint3(_69), 0).x - ((0.5 * (inPressure.read(uint3(int4(_53 + int3(0, 0, 1), 0).xyz), 0).x - inPressure.read(uint3(int4(_53 + int3(0, 0, -1), 0).xyz), 0).x)) * _93)), uint3(gl_GlobalInvocationID));
+        int3 _68 = int4(int3(gl_GlobalInvocationID), 0).xyz;
+        float _92 = float(_49);
+        uint3 _95 = uint3(int3(gl_GlobalInvocationID));
+        outVelocityX.write(float4(inVelocityX.read(uint3(_68), 0).x - ((0.5 * (inPressure.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(1, 0, 0), 0).xyz), 0).x - inPressure.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(-1, 0, 0), 0).xyz), 0).x)) * _92)), uint3(_95));
+        outVelocityY.write(float4(inVelocityY.read(uint3(_68), 0).x - ((0.5 * (inPressure.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, 1, 0), 0).xyz), 0).x - inPressure.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, -1, 0), 0).xyz), 0).x)) * _92)), uint3(_95));
+        outVelocityZ.write(float4(inVelocityZ.read(uint3(_68), 0).x - ((0.5 * (inPressure.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, 0, 1), 0).xyz), 0).x - inPressure.read(uint3(int4(int3(gl_GlobalInvocationID) + int3(0, 0, -1), 0).xyz), 0).x)) * _92)), uint3(_95));
         break;
     } while(false);
 }
