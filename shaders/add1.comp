@@ -1,18 +1,19 @@
-#version 450
+#include "shader.hlsl"
 
-layout(local_size_x = 1) in;
-layout(set = 1, binding = 0, r32f) uniform image3D inOutImage;
-layout(set = 2, binding = 0) uniform uniformPosition
+cbuffer UniformBuffer : register(b0, space2)
 {
-    ivec3 position;
+    int3 Position;
 };
-layout(set = 2, binding = 1) uniform uniformValue
+cbuffer UniformBuffer : register(b1, space2)
 {
-    float value;
+    float Value;
 };
 
-void main()
+[[vk::image_format("r32f")]]
+RWTexture3D<float> inOutImage : register(u0, space1);
+
+[numthreads(1, 1, 1)]
+void main(uint3 dispatchId : SV_DispatchThreadID)
 {
-    float current = imageLoad(inOutImage, position).x;
-    imageStore(inOutImage, position, vec4(current + value));
+    inOutImage[Position] = inOutImage[Position] + Value;
 }

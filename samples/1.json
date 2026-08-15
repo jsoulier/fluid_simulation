@@ -1,7 +1,6 @@
 {
     "Diffusion": 0.000004,
     "Iterations": 5,
-    "Size": 128,
     "Spawners": [
         {
             "Position": [

@@ -3,28 +3,29 @@
 
 using namespace metal;
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-kernel void main0(texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float, access::write> outPressure [[texture(3)]], texture3d<float, access::write> outDivergence [[texture(4)]], sampler inVelocityXSmplr [[sampler(0)]], sampler inVelocityYSmplr [[sampler(1)]], sampler inVelocityZSmplr [[sampler(2)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float, access::write> outPressure [[texture(3)]], texture3d<float, access::write> outDivergence [[texture(4)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    bool _34 = any(id >= (size - int3(1)));
-    bool _42;
-    if (!_34)
+    do
     {
-        _42 = any(id <= int3(0));
-    }
-    else
-    {
-        _42 = _34;
-    }
-    if (_42)
-    {
-        return;
-    }
-    uint N = uint(size.x);
-    outDivergence.write(float4(((-0.5) * (((((inVelocityX.read(uint3((id + int3(1, 0, 0))), 0).x - inVelocityX.read(uint3((id + int3(-1, 0, 0))), 0).x) + inVelocityY.read(uint3((id + int3(0, 1, 0))), 0).x) - inVelocityY.read(uint3((id + int3(0, -1, 0))), 0).x) + inVelocityZ.read(uint3((id + int3(0, 0, 1))), 0).x) - inVelocityZ.read(uint3((id + int3(0, 0, -1))), 0).x)) / float(N)), uint3(id));
-    outPressure.write(float4(0.0), uint3(id));
+        uint3 _44 = uint3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
+        int _48 = int(_44.x);
+        int3 _52 = int3(gl_GlobalInvocationID);
+        bool _61;
+        if (!any(_52 >= (int3(_48, int(_44.y), int(_44.z)) - int3(1))))
+        {
+            _61 = any(_52 <= int3(0));
+        }
+        else
+        {
+            _61 = true;
+        }
+        if (_61)
+        {
+            break;
+        }
+        outDivergence.write(float4(((-0.5) * (((((inVelocityX.read(uint3(int4(_52 + int3(1, 0, 0), 0).xyz), 0).x - inVelocityX.read(uint3(int4(_52 + int3(-1, 0, 0), 0).xyz), 0).x) + inVelocityY.read(uint3(int4(_52 + int3(0, 1, 0), 0).xyz), 0).x) - inVelocityY.read(uint3(int4(_52 + int3(0, -1, 0), 0).xyz), 0).x) + inVelocityZ.read(uint3(int4(_52 + int3(0, 0, 1), 0).xyz), 0).x) - inVelocityZ.read(uint3(int4(_52 + int3(0, 0, -1), 0).xyz), 0).x)) / float(_48)), uint3(gl_GlobalInvocationID));
+        outPressure.write(float4(0.0), uint3(gl_GlobalInvocationID));
+        break;
+    } while(false);
 }
 

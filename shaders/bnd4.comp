@@ -1,63 +1,64 @@
-#version 450
+#include "shader.hlsl"
 
-#include "config.hpp"
+Texture3D<float> inImage : register(t0, space0);
+[[vk::image_format("r32f")]]
+RWTexture3D<float> outImage : register(u0, space1);
 
-layout(local_size_x = 8, local_size_y = 1, local_size_z = 1) in;
-layout(set = 0, binding = 0) uniform sampler3D inImage;
-layout(set = 1, binding = 0, r32f) uniform writeonly image3D outImage;
-
-void main()
+[numthreads(8, 1, 1)]
+void main(uint3 dispatchId : SV_DispatchThreadID)
 {
-    ivec3 size = textureSize(inImage, 0);
-    uint id = gl_GlobalInvocationID.x;
-    uint N = size.x;
-    const ivec3 Positions[8] = ivec3[]
-    (
-        ivec3(0, 0, 0),
-        ivec3(0, N - 1, 0),
-        ivec3(0, 0, N - 1),
-        ivec3(0, N - 1, N - 1),
-        ivec3(N - 1, 0, 0),
-        ivec3(N - 1, N - 1, 0),
-        ivec3(N - 1, 0, N - 1),
-        ivec3(N - 1, N - 1, N - 1)
-    );
-    const ivec3 Neighbors1[8] = ivec3[]
-    (
-        ivec3(1, 0, 0),
-        ivec3(1, N - 1, 0),
-        ivec3(1, 0, N - 1),
-        ivec3(1, N - 1, N - 1),
-        ivec3(N - 2, 0, 0),
-        ivec3(N - 2, N - 1, 0),
-        ivec3(N - 2, 0, N - 1),
-        ivec3(N - 2, N - 1, N - 1)
-    );
-    const ivec3 Neighbors2[8] = ivec3[]
-    (
-        ivec3(0, 1, 0),
-        ivec3(0, N - 2, 0),
-        ivec3(0, 1, N - 1),
-        ivec3(0, N - 2, N - 1),
-        ivec3(N - 1, 1, 0),
-        ivec3(N - 1, N - 2, 0),
-        ivec3(N - 1, 1, N - 1),
-        ivec3(N - 1, N - 2, N - 1)
-    );
-    const ivec3 Neighbors3[8] = ivec3[]
-    (
-        ivec3(0, 0, 1),
-        ivec3(0, N - 1, 1),
-        ivec3(0, 0, N - 2),
-        ivec3(0, N - 1, N - 2),
-        ivec3(N - 1, 0, 1),
-        ivec3(N - 1, N - 1, 1),
-        ivec3(N - 1, 0, N - 2),
-        ivec3(N - 1, N - 1, N - 2)
-    );
-    imageStore(outImage, Positions[id],
-        vec4(0.33f * (
-            texelFetch(inImage, Neighbors1[id], 0).x +
-            texelFetch(inImage, Neighbors2[id], 0).x +
-            texelFetch(inImage, Neighbors3[id], 0).x)));
+    uint width;
+    uint height;
+    uint depth;
+    inImage.GetDimensions(width, height, depth);
+    int N = int(width);
+    uint id = dispatchId.x;
+    int3 Positions[8] =
+    {
+        int3(0, 0, 0),
+        int3(0, N - 1, 0),
+        int3(0, 0, N - 1),
+        int3(0, N - 1, N - 1),
+        int3(N - 1, 0, 0),
+        int3(N - 1, N - 1, 0),
+        int3(N - 1, 0, N - 1),
+        int3(N - 1, N - 1, N - 1)
+    };
+    int3 Neighbors1[8] =
+    {
+        int3(1, 0, 0),
+        int3(1, N - 1, 0),
+        int3(1, 0, N - 1),
+        int3(1, N - 1, N - 1),
+        int3(N - 2, 0, 0),
+        int3(N - 2, N - 1, 0),
+        int3(N - 2, 0, N - 1),
+        int3(N - 2, N - 1, N - 1)
+    };
+    int3 Neighbors2[8] =
+    {
+        int3(0, 1, 0),
+        int3(0, N - 2, 0),
+        int3(0, 1, N - 1),
+        int3(0, N - 2, N - 1),
+        int3(N - 1, 1, 0),
+        int3(N - 1, N - 2, 0),
+        int3(N - 1, 1, N - 1),
+        int3(N - 1, N - 2, N - 1)
+    };
+    int3 Neighbors3[8] =
+    {
+        int3(0, 0, 1),
+        int3(0, N - 1, 1),
+        int3(0, 0, N - 2),
+        int3(0, N - 1, N - 2),
+        int3(N - 1, 0, 1),
+        int3(N - 1, N - 1, 1),
+        int3(N - 1, 0, N - 2),
+        int3(N - 1, N - 1, N - 2)
+    };
+    outImage[Positions[id]] = 0.33f * (
+        inImage.Load(int4(Neighbors1[id], 0)) +
+        inImage.Load(int4(Neighbors2[id], 0)) +
+        inImage.Load(int4(Neighbors3[id], 0)));
 }

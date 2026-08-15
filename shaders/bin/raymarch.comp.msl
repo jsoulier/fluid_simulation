@@ -1,0 +1,376 @@
+#include <metal_stdlib>
+#include <simd/simd.h>
+
+using namespace metal;
+
+struct type_UniformBuffer
+{
+    float4x4 InverseView;
+    float4x4 InverseProj;
+    packed_float3 Position;
+    float DyeStrength;
+    int Type;
+};
+
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float> inImages_0_ [[texture(0)]], texture3d<float> inImages_1_ [[texture(1)]], texture3d<float> inImages_2_ [[texture(2)]], texture3d<float> inImages_3_ [[texture(3)]], texture3d<float> inImages_4_ [[texture(4)]], texture3d<float> inImages_5_ [[texture(5)]], texture2d<float, access::write> outColor [[texture(6)]], sampler inSamplers_0_ [[sampler(0)]], sampler inSamplers_1_ [[sampler(1)]], sampler inSamplers_2_ [[sampler(2)]], sampler inSamplers_3_ [[sampler(3)]], sampler inSamplers_4_ [[sampler(4)]], sampler inSamplers_5_ [[sampler(5)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
+    do
+    {
+        uint3 _71 = uint3(inImages_0_.get_width(), inImages_0_.get_height(), inImages_0_.get_depth());
+        uint2 _80 = uint2(outColor.get_width(), outColor.get_height());
+        uint _81 = _80.x;
+        uint _82 = _80.y;
+        int2 _84 = int2(gl_GlobalInvocationID.xy);
+        if (any(_84 >= int2(int(_81), int(_82))))
+        {
+            break;
+        }
+        float2 _96 = float2(_84) / float2(float(_81), float(_82));
+        _96.y = 1.0 - _96.y;
+        float4 _107 = UniformBuffer.InverseProj * float4((_96 * 2.0) - float2(1.0), 0.0, 1.0);
+        float3 _119 = fast::normalize((UniformBuffer.InverseView * float4((_107 / float4(_107.w)).xyz, 0.0)).xyz);
+        float3 _124 = ((-float3(UniformBuffer.Position)) * 1.0) / _119;
+        float3 _125 = float3(int3(int(_71.x), int(_71.y), int(_71.z)));
+        float3 _128 = ((_125 - float3(UniformBuffer.Position)) * 1.0) / _119;
+        float3 _129 = precise::min(_124, _128);
+        float3 _130 = precise::max(_124, _128);
+        float _136 = precise::max(precise::max(precise::max(_129.x, _129.y), _129.z), 0.0);
+        float _141 = precise::min(precise::min(_130.x, _130.y), _130.z);
+        if ((isunordered(_141, _136) || _141 <= _136))
+        {
+            outColor.write(float4(0.0), uint2(gl_GlobalInvocationID.xy));
+        }
+        float _146 = _141 - _136;
+        int _149 = min((int(_146) + 1), 512);
+        float _151 = _146 / float(_149);
+        float4 _153;
+        _153 = float4(0.0);
+        float4 _154;
+        float4 _444;
+        int _156 = 0;
+        for (;;)
+        {
+            if (_156 < _149)
+            {
+                float3 _167 = (float3(UniformBuffer.Position) + (_119 * (_136 + ((float(_156) + 0.5) * _151)))) / _125;
+                float3 _431;
+                float _432;
+                if (UniformBuffer.Type == 6)
+                {
+                    float3 _189 = float3(inImages_0_.sample(inSamplers_0_, _167, level(0.0)).x, inImages_1_.sample(inSamplers_1_, _167, level(0.0)).x, inImages_2_.sample(inSamplers_2_, _167, level(0.0)).x);
+                    float _196 = length(_189);
+                    float3 _209;
+                    if (_196 > 0.0)
+                    {
+                        _209 = abs(_189) / float3(_196);
+                    }
+                    else
+                    {
+                        _209 = float3(1.0);
+                    }
+                    _431 = mix(float3(1.0), _209, float3(0.800000011920928955078125));
+                    _432 = 1.0 - exp((-((precise::max(inImages_5_.sample(inSamplers_5_, _167, level(0.0)).x, 0.0) * UniformBuffer.DyeStrength) + (_196 * 2.0))) * _151);
+                }
+                else
+                {
+                    float4 _421;
+                    switch (UniformBuffer.Type)
+                    {
+                        case 0:
+                        {
+                            float4 _255;
+                            switch (UniformBuffer.Type)
+                            {
+                                case 0:
+                                {
+                                    _255 = inImages_0_.sample(inSamplers_0_, _167, level(0.0));
+                                    break;
+                                }
+                                case 1:
+                                {
+                                    _255 = inImages_0_.sample(inSamplers_1_, _167, level(0.0));
+                                    break;
+                                }
+                                case 2:
+                                {
+                                    _255 = inImages_0_.sample(inSamplers_2_, _167, level(0.0));
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    _255 = inImages_0_.sample(inSamplers_3_, _167, level(0.0));
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    _255 = inImages_0_.sample(inSamplers_4_, _167, level(0.0));
+                                    break;
+                                }
+                                case 5:
+                                {
+                                    _255 = inImages_0_.sample(inSamplers_5_, _167, level(0.0));
+                                    break;
+                                }
+                                default:
+                                {
+                                    _255 = float4(0.0);
+                                    break;
+                                }
+                            }
+                            _421 = _255;
+                            break;
+                        }
+                        case 1:
+                        {
+                            float4 _288;
+                            switch (UniformBuffer.Type)
+                            {
+                                case 0:
+                                {
+                                    _288 = inImages_1_.sample(inSamplers_0_, _167, level(0.0));
+                                    break;
+                                }
+                                case 1:
+                                {
+                                    _288 = inImages_1_.sample(inSamplers_1_, _167, level(0.0));
+                                    break;
+                                }
+                                case 2:
+                                {
+                                    _288 = inImages_1_.sample(inSamplers_2_, _167, level(0.0));
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    _288 = inImages_1_.sample(inSamplers_3_, _167, level(0.0));
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    _288 = inImages_1_.sample(inSamplers_4_, _167, level(0.0));
+                                    break;
+                                }
+                                case 5:
+                                {
+                                    _288 = inImages_1_.sample(inSamplers_5_, _167, level(0.0));
+                                    break;
+                                }
+                                default:
+                                {
+                                    _288 = float4(0.0);
+                                    break;
+                                }
+                            }
+                            _421 = _288;
+                            break;
+                        }
+                        case 2:
+                        {
+                            float4 _321;
+                            switch (UniformBuffer.Type)
+                            {
+                                case 0:
+                                {
+                                    _321 = inImages_2_.sample(inSamplers_0_, _167, level(0.0));
+                                    break;
+                                }
+                                case 1:
+                                {
+                                    _321 = inImages_2_.sample(inSamplers_1_, _167, level(0.0));
+                                    break;
+                                }
+                                case 2:
+                                {
+                                    _321 = inImages_2_.sample(inSamplers_2_, _167, level(0.0));
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    _321 = inImages_2_.sample(inSamplers_3_, _167, level(0.0));
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    _321 = inImages_2_.sample(inSamplers_4_, _167, level(0.0));
+                                    break;
+                                }
+                                case 5:
+                                {
+                                    _321 = inImages_2_.sample(inSamplers_5_, _167, level(0.0));
+                                    break;
+                                }
+                                default:
+                                {
+                                    _321 = float4(0.0);
+                                    break;
+                                }
+                            }
+                            _421 = _321;
+                            break;
+                        }
+                        case 3:
+                        {
+                            float4 _354;
+                            switch (UniformBuffer.Type)
+                            {
+                                case 0:
+                                {
+                                    _354 = inImages_3_.sample(inSamplers_0_, _167, level(0.0));
+                                    break;
+                                }
+                                case 1:
+                                {
+                                    _354 = inImages_3_.sample(inSamplers_1_, _167, level(0.0));
+                                    break;
+                                }
+                                case 2:
+                                {
+                                    _354 = inImages_3_.sample(inSamplers_2_, _167, level(0.0));
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    _354 = inImages_3_.sample(inSamplers_3_, _167, level(0.0));
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    _354 = inImages_3_.sample(inSamplers_4_, _167, level(0.0));
+                                    break;
+                                }
+                                case 5:
+                                {
+                                    _354 = inImages_3_.sample(inSamplers_5_, _167, level(0.0));
+                                    break;
+                                }
+                                default:
+                                {
+                                    _354 = float4(0.0);
+                                    break;
+                                }
+                            }
+                            _421 = _354;
+                            break;
+                        }
+                        case 4:
+                        {
+                            float4 _387;
+                            switch (UniformBuffer.Type)
+                            {
+                                case 0:
+                                {
+                                    _387 = inImages_4_.sample(inSamplers_0_, _167, level(0.0));
+                                    break;
+                                }
+                                case 1:
+                                {
+                                    _387 = inImages_4_.sample(inSamplers_1_, _167, level(0.0));
+                                    break;
+                                }
+                                case 2:
+                                {
+                                    _387 = inImages_4_.sample(inSamplers_2_, _167, level(0.0));
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    _387 = inImages_4_.sample(inSamplers_3_, _167, level(0.0));
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    _387 = inImages_4_.sample(inSamplers_4_, _167, level(0.0));
+                                    break;
+                                }
+                                case 5:
+                                {
+                                    _387 = inImages_4_.sample(inSamplers_5_, _167, level(0.0));
+                                    break;
+                                }
+                                default:
+                                {
+                                    _387 = float4(0.0);
+                                    break;
+                                }
+                            }
+                            _421 = _387;
+                            break;
+                        }
+                        case 5:
+                        {
+                            float4 _420;
+                            switch (UniformBuffer.Type)
+                            {
+                                case 0:
+                                {
+                                    _420 = inImages_5_.sample(inSamplers_0_, _167, level(0.0));
+                                    break;
+                                }
+                                case 1:
+                                {
+                                    _420 = inImages_5_.sample(inSamplers_1_, _167, level(0.0));
+                                    break;
+                                }
+                                case 2:
+                                {
+                                    _420 = inImages_5_.sample(inSamplers_2_, _167, level(0.0));
+                                    break;
+                                }
+                                case 3:
+                                {
+                                    _420 = inImages_5_.sample(inSamplers_3_, _167, level(0.0));
+                                    break;
+                                }
+                                case 4:
+                                {
+                                    _420 = inImages_5_.sample(inSamplers_4_, _167, level(0.0));
+                                    break;
+                                }
+                                case 5:
+                                {
+                                    _420 = inImages_5_.sample(inSamplers_5_, _167, level(0.0));
+                                    break;
+                                }
+                                default:
+                                {
+                                    _420 = float4(0.0);
+                                    break;
+                                }
+                            }
+                            _421 = _420;
+                            break;
+                        }
+                        default:
+                        {
+                            _421 = float4(0.0);
+                            break;
+                        }
+                    }
+                    _431 = float3(1.0);
+                    _432 = 1.0 - exp(((-abs(_421.x)) * UniformBuffer.DyeStrength) * _151);
+                }
+                float _435 = (1.0 - _153.w) * _432;
+                float3 _438 = _153.xyz + (_431 * _435);
+                float _440 = _153.w + _435;
+                _154 = float4(_438.x, _438.y, _438.z, _153.w);
+                _154.w = _440;
+                if (_440 > 0.9900000095367431640625)
+                {
+                    _444 = _154;
+                    break;
+                }
+                _153 = _154;
+                _156++;
+                continue;
+            }
+            else
+            {
+                _444 = _153;
+                break;
+            }
+        }
+        outColor.write(_444, uint2(gl_GlobalInvocationID.xy));
+        break;
+    } while(false);
+}
+

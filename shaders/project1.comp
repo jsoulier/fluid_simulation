@@ -1,29 +1,33 @@
-#version 450
+#include "shader.hlsl"
 
-#include "config.hpp"
+Texture3D<float> inVelocityX : register(t0, space0);
+Texture3D<float> inVelocityY : register(t1, space0);
+Texture3D<float> inVelocityZ : register(t2, space0);
+[[vk::image_format("r32f")]]
+RWTexture3D<float> outPressure : register(u0, space1);
+[[vk::image_format("r32f")]]
+RWTexture3D<float> outDivergence : register(u1, space1);
 
-layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = THREADS) in;
-layout(set = 0, binding = 0) uniform sampler3D inVelocityX;
-layout(set = 0, binding = 1) uniform sampler3D inVelocityY;
-layout(set = 0, binding = 2) uniform sampler3D inVelocityZ;
-layout(set = 1, binding = 0, r32f) uniform writeonly image3D outPressure;
-layout(set = 1, binding = 1, r32f) uniform writeonly image3D outDivergence;
-
-void main()
+[numthreads(THREADS, THREADS, THREADS)]
+void main(uint3 dispatchId : SV_DispatchThreadID)
 {
-    ivec3 size = textureSize(inVelocityX, 0);
-    ivec3 id = ivec3(gl_GlobalInvocationID);
-    if (any(greaterThanEqual(id, size - 1)) || any(lessThanEqual(id, ivec3(0))))
+    uint width;
+    uint height;
+    uint depth;
+    inVelocityX.GetDimensions(width, height, depth);
+    int3 size = int3(width, height, depth);
+    int3 id = int3(dispatchId);
+    if (any(id >= size - 1) || any(id <= int3(0, 0, 0)))
     {
         return;
     }
-    uint N = size.x;
-    imageStore(outDivergence, id, vec4(
-        -0.5f * (texelFetch(inVelocityX, id + ivec3( 1, 0, 0 ), 0).x -
-                 texelFetch(inVelocityX, id + ivec3(-1, 0, 0 ), 0).x +
-                 texelFetch(inVelocityY, id + ivec3( 0, 1, 0 ), 0).x -
-                 texelFetch(inVelocityY, id + ivec3( 0,-1, 0 ), 0).x +
-                 texelFetch(inVelocityZ, id + ivec3( 0, 0, 1 ), 0).x -
-                 texelFetch(inVelocityZ, id + ivec3( 0, 0,-1 ), 0).x) / N));
-    imageStore(outPressure, id, vec4(0.0f));
+    int N = size.x;
+    outDivergence[id] =
+        -0.5f * (inVelocityX.Load(int4(id + int3( 1, 0, 0 ), 0)) -
+                 inVelocityX.Load(int4(id + int3(-1, 0, 0 ), 0)) +
+                 inVelocityY.Load(int4(id + int3( 0, 1, 0 ), 0)) -
+                 inVelocityY.Load(int4(id + int3( 0,-1, 0 ), 0)) +
+                 inVelocityZ.Load(int4(id + int3( 0, 0, 1 ), 0)) -
+                 inVelocityZ.Load(int4(id + int3( 0, 0,-1 ), 0))) / N;
+    outPressure[id] = 0.0f;
 }

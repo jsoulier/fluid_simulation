@@ -1,26 +1,29 @@
-#version 450
+#include "shader.hlsl"
 
-#include "config.hpp"
-#include "shader.glsl"
-
-layout(local_size_x = THREADS, local_size_y = THREADS, local_size_z = THREADS) in;
-layout(set = 0, binding = 0) uniform sampler3D inDensity;
-layout(set = 0, binding = 1) uniform sampler3D inVelocityX;
-layout(set = 0, binding = 2) uniform sampler3D inVelocityY;
-layout(set = 0, binding = 3) uniform sampler3D inVelocityZ;
-layout(set = 1, binding = 0, r32f) uniform writeonly image3D outDensity;
-layout(set = 2, binding = 0) uniform uniformDeltaTime
+cbuffer UniformBuffer : register(b0, space2)
 {
-    float deltaTime;
+    float DeltaTime;
 };
 
-void main()
+Texture3D<float> inDensity : register(t0, space0);
+Texture3D<float> inVelocityX : register(t1, space0);
+Texture3D<float> inVelocityY : register(t2, space0);
+Texture3D<float> inVelocityZ : register(t3, space0);
+[[vk::image_format("r32f")]]
+RWTexture3D<float> outDensity : register(u0, space1);
+
+[numthreads(THREADS, THREADS, THREADS)]
+void main(uint3 dispatchId : SV_DispatchThreadID)
 {
-    ivec3 size = textureSize(inDensity, 0);
-    ivec3 id = ivec3(gl_GlobalInvocationID);
-    if (any(greaterThanEqual(id, size - 1)) || any(lessThanEqual(id, ivec3(0))))
+    uint width;
+    uint height;
+    uint depth;
+    inDensity.GetDimensions(width, height, depth);
+    int3 size = int3(width, height, depth);
+    int3 id = int3(dispatchId);
+    if (any(id >= size - 1) || any(id <= int3(0, 0, 0)))
     {
         return;
     }
-    ADVECT(id, outDensity, inDensity, inVelocityX, inVelocityY, inVelocityZ, deltaTime, size);
+    Advect(id, outDensity, inDensity, inVelocityX, inVelocityY, inVelocityZ, DeltaTime, size);
 }

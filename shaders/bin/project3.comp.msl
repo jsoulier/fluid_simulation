@@ -3,29 +3,32 @@
 
 using namespace metal;
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-kernel void main0(texture3d<float> inPressure [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outVelocityX [[texture(4)]], texture3d<float, access::write> outVelocityY [[texture(5)]], texture3d<float, access::write> outVelocityZ [[texture(6)]], sampler inPressureSmplr [[sampler(0)]], sampler inVelocityXSmplr [[sampler(1)]], sampler inVelocityYSmplr [[sampler(2)]], sampler inVelocityZSmplr [[sampler(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(texture3d<float> inPressure [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outVelocityX [[texture(4)]], texture3d<float, access::write> outVelocityY [[texture(5)]], texture3d<float, access::write> outVelocityZ [[texture(6)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inPressure.get_width(), inPressure.get_height(), inPressure.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    bool _34 = any(id >= (size - int3(1)));
-    bool _42;
-    if (!_34)
+    do
     {
-        _42 = any(id <= int3(0));
-    }
-    else
-    {
-        _42 = _34;
-    }
-    if (_42)
-    {
-        return;
-    }
-    uint N = uint(size.x);
-    outVelocityX.write(float4(inVelocityX.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(1, 0, 0))), 0) - inPressure.read(uint3((id + int3(-1, 0, 0))), 0)) * 0.5) * float(N)), uint3(id));
-    outVelocityY.write(float4(inVelocityY.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(0, 1, 0))), 0) - inPressure.read(uint3((id + int3(0, -1, 0))), 0)) * 0.5) * float(N)), uint3(id));
-    outVelocityZ.write(float4(inVelocityZ.read(uint3(id), 0).x) - (((inPressure.read(uint3((id + int3(0, 0, 1))), 0) - inPressure.read(uint3((id + int3(0, 0, -1))), 0)) * 0.5) * float(N)), uint3(id));
+        uint3 _45 = uint3(inPressure.get_width(), inPressure.get_height(), inPressure.get_depth());
+        int _49 = int(_45.x);
+        int3 _53 = int3(gl_GlobalInvocationID);
+        bool _62;
+        if (!any(_53 >= (int3(_49, int(_45.y), int(_45.z)) - int3(1))))
+        {
+            _62 = any(_53 <= int3(0));
+        }
+        else
+        {
+            _62 = true;
+        }
+        if (_62)
+        {
+            break;
+        }
+        int3 _69 = int4(_53, 0).xyz;
+        float _93 = float(_49);
+        outVelocityX.write(float4(inVelocityX.read(uint3(_69), 0).x - ((0.5 * (inPressure.read(uint3(int4(_53 + int3(1, 0, 0), 0).xyz), 0).x - inPressure.read(uint3(int4(_53 + int3(-1, 0, 0), 0).xyz), 0).x)) * _93)), uint3(gl_GlobalInvocationID));
+        outVelocityY.write(float4(inVelocityY.read(uint3(_69), 0).x - ((0.5 * (inPressure.read(uint3(int4(_53 + int3(0, 1, 0), 0).xyz), 0).x - inPressure.read(uint3(int4(_53 + int3(0, -1, 0), 0).xyz), 0).x)) * _93)), uint3(gl_GlobalInvocationID));
+        outVelocityZ.write(float4(inVelocityZ.read(uint3(_69), 0).x - ((0.5 * (inPressure.read(uint3(int4(_53 + int3(0, 0, 1), 0).xyz), 0).x - inPressure.read(uint3(int4(_53 + int3(0, 0, -1), 0).xyz), 0).x)) * _93)), uint3(gl_GlobalInvocationID));
+        break;
+    } while(false);
 }
 

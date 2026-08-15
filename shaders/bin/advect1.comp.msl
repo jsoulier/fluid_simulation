@@ -3,149 +3,121 @@
 
 using namespace metal;
 
-struct uniformVelocity
+struct type_UniformBuffer
 {
-    uint velocity;
+    uint Velocity;
 };
 
-struct uniformDeltaTime
+struct type_UniformBuffer_1
 {
-    float deltaTime;
+    float DeltaTime;
 };
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-kernel void main0(constant uniformVelocity& _48 [[buffer(0)]], constant uniformDeltaTime& _71 [[buffer(1)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float, access::write> outVelocity [[texture(3)]], sampler inVelocityXSmplr [[sampler(0)]], sampler inVelocityYSmplr [[sampler(1)]], sampler inVelocityZSmplr [[sampler(2)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], constant type_UniformBuffer_1& UniformBuffer_1 [[buffer(1)]], texture3d<float> inVelocityX [[texture(0)]], texture3d<float> inVelocityY [[texture(1)]], texture3d<float> inVelocityZ [[texture(2)]], texture3d<float, access::write> outVelocity [[texture(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    bool _34 = any(id >= (size - int3(1)));
-    bool _42;
-    if (!_34)
+    do
     {
-        _42 = any(id <= int3(0));
-    }
-    else
-    {
-        _42 = _34;
-    }
-    if (_42)
-    {
-        return;
-    }
-    if (_48.velocity == 0u)
-    {
-        do
+        uint3 _48 = uint3(inVelocityX.get_width(), inVelocityX.get_height(), inVelocityX.get_depth());
+        int _52 = int(_48.x);
+        int3 _56 = int3(gl_GlobalInvocationID);
+        bool _65;
+        if (!any(_56 >= (int3(_52, int(_48.y), int(_48.z)) - int3(1))))
         {
-            float N = float(size.x - 2);
-            float dtx = _71.deltaTime * N;
-            float dty = _71.deltaTime * N;
-            float dtz = _71.deltaTime * N;
-            float tmp1 = dtx * inVelocityX.read(uint3(id), 0).x;
-            float tmp2 = dty * inVelocityY.read(uint3(id), 0).x;
-            float tmp3 = dtz * inVelocityZ.read(uint3(id), 0).x;
-            float x = fast::clamp(float(id.x) - tmp1, 0.5, N + 0.5);
-            float y = fast::clamp(float(id.y) - tmp2, 0.5, N + 0.5);
-            float z = fast::clamp(float(id.z) - tmp3, 0.5, N + 0.5);
-            float i0 = floor(x);
-            float i1 = i0 + 1.0;
-            float j0 = floor(y);
-            float j1 = j0 + 1.0;
-            float k0 = floor(z);
-            float k1 = k0 + 1.0;
-            float s1 = x - i0;
-            float s0 = 1.0 - s1;
-            float t1 = y - j0;
-            float t0 = 1.0 - t1;
-            float u1 = z - k0;
-            float u0 = 1.0 - u1;
-            int i0i = int(i0);
-            int i1i = int(i1);
-            int j0i = int(j0);
-            int j1i = int(j1);
-            int k0i = int(k0);
-            int k1i = int(k1);
-            float4 _306 = float4((s0 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i0i, j0i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i0i, j1i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i0i, j1i, k1i)), 0).x))))) + (s1 * ((t0 * ((u0 * inVelocityX.read(uint3(int3(i1i, j0i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inVelocityX.read(uint3(int3(i1i, j1i, k0i)), 0).x) + (u1 * inVelocityX.read(uint3(int3(i1i, j1i, k1i)), 0).x))))));
-            outVelocity.write(_306, uint3(id));
-        } while (false);
-    }
-    else
-    {
-        if (_48.velocity == 1u)
-        {
-            do
-            {
-                float N_1 = float(size.x - 2);
-                float dtx_1 = _71.deltaTime * N_1;
-                float dty_1 = _71.deltaTime * N_1;
-                float dtz_1 = _71.deltaTime * N_1;
-                float tmp1_1 = dtx_1 * inVelocityX.read(uint3(id), 0).x;
-                float tmp2_1 = dty_1 * inVelocityY.read(uint3(id), 0).x;
-                float tmp3_1 = dtz_1 * inVelocityZ.read(uint3(id), 0).x;
-                float x_1 = fast::clamp(float(id.x) - tmp1_1, 0.5, N_1 + 0.5);
-                float y_1 = fast::clamp(float(id.y) - tmp2_1, 0.5, N_1 + 0.5);
-                float z_1 = fast::clamp(float(id.z) - tmp3_1, 0.5, N_1 + 0.5);
-                float i0_1 = floor(x_1);
-                float i1_1 = i0_1 + 1.0;
-                float j0_1 = floor(y_1);
-                float j1_1 = j0_1 + 1.0;
-                float k0_1 = floor(z_1);
-                float k1_1 = k0_1 + 1.0;
-                float s1_1 = x_1 - i0_1;
-                float s0_1 = 1.0 - s1_1;
-                float t1_1 = y_1 - j0_1;
-                float t0_1 = 1.0 - t1_1;
-                float u1_1 = z_1 - k0_1;
-                float u0_1 = 1.0 - u1_1;
-                int i0i_1 = int(i0_1);
-                int i1i_1 = int(i1_1);
-                int j0i_1 = int(j0_1);
-                int j1i_1 = int(j1_1);
-                int k0i_1 = int(k0_1);
-                int k1i_1 = int(k1_1);
-                float4 _547 = float4((s0_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j0i_1, k1i_1)), 0).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i0i_1, j1i_1, k1i_1)), 0).x))))) + (s1_1 * ((t0_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j0i_1, k1i_1)), 0).x))) + (t1_1 * ((u0_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k0i_1)), 0).x) + (u1_1 * inVelocityY.read(uint3(int3(i1i_1, j1i_1, k1i_1)), 0).x))))));
-                outVelocity.write(_547, uint3(id));
-            } while (false);
+            _65 = any(_56 <= int3(0));
         }
         else
         {
-            if (_48.velocity == 2u)
+            _65 = true;
+        }
+        if (_65)
+        {
+            break;
+        }
+        if (UniformBuffer.Velocity == 0u)
+        {
+            float _82 = float(_52 - 2);
+            float _83 = UniformBuffer_1.DeltaTime * _82;
+            int _84 = _56.x;
+            int3 _88 = int4(_84, _56.yz, 0).xyz;
+            float _100 = _82 + 0.5;
+            float _101 = fast::clamp(float(_84) - (_83 * inVelocityX.read(uint3(_88), 0).x), 0.5, _100);
+            float _104 = fast::clamp(float(_56.y) - (_83 * inVelocityY.read(uint3(_88), 0).x), 0.5, _100);
+            float _107 = fast::clamp(float(_56.z) - (_83 * inVelocityZ.read(uint3(_88), 0).x), 0.5, _100);
+            float _108 = floor(_101);
+            float _110 = floor(_104);
+            float _112 = floor(_107);
+            float _114 = _101 - _108;
+            float _116 = _104 - _110;
+            float _117 = 1.0 - _116;
+            float _118 = _107 - _112;
+            float _119 = 1.0 - _118;
+            int _120 = int(_108);
+            int _121 = int(_108 + 1.0);
+            int _122 = int(_110);
+            int _123 = int(_110 + 1.0);
+            int _124 = int(_112);
+            int _125 = int(_112 + 1.0);
+            outVelocity.write(float4(((1.0 - _114) * ((_117 * ((_119 * inVelocityX.read(uint3(int4(_120, _122, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_120, _122, _125, 0).xyz), 0).x))) + (_116 * ((_119 * inVelocityX.read(uint3(int4(_120, _123, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_120, _123, _125, 0).xyz), 0).x))))) + (_114 * ((_117 * ((_119 * inVelocityX.read(uint3(int4(_121, _122, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_121, _122, _125, 0).xyz), 0).x))) + (_116 * ((_119 * inVelocityX.read(uint3(int4(_121, _123, _124, 0).xyz), 0).x) + (_118 * inVelocityX.read(uint3(int4(_121, _123, _125, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+        }
+        else
+        {
+            if (UniformBuffer.Velocity == 1u)
             {
-                do
+                float _191 = float(_52 - 2);
+                float _192 = UniformBuffer_1.DeltaTime * _191;
+                int _193 = _56.x;
+                int3 _197 = int4(_193, _56.yz, 0).xyz;
+                float _209 = _191 + 0.5;
+                float _210 = fast::clamp(float(_193) - (_192 * inVelocityX.read(uint3(_197), 0).x), 0.5, _209);
+                float _213 = fast::clamp(float(_56.y) - (_192 * inVelocityY.read(uint3(_197), 0).x), 0.5, _209);
+                float _216 = fast::clamp(float(_56.z) - (_192 * inVelocityZ.read(uint3(_197), 0).x), 0.5, _209);
+                float _217 = floor(_210);
+                float _219 = floor(_213);
+                float _221 = floor(_216);
+                float _223 = _210 - _217;
+                float _225 = _213 - _219;
+                float _226 = 1.0 - _225;
+                float _227 = _216 - _221;
+                float _228 = 1.0 - _227;
+                int _229 = int(_217);
+                int _230 = int(_217 + 1.0);
+                int _231 = int(_219);
+                int _232 = int(_219 + 1.0);
+                int _233 = int(_221);
+                int _234 = int(_221 + 1.0);
+                outVelocity.write(float4(((1.0 - _223) * ((_226 * ((_228 * inVelocityY.read(uint3(int4(_229, _231, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_229, _231, _234, 0).xyz), 0).x))) + (_225 * ((_228 * inVelocityY.read(uint3(int4(_229, _232, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_229, _232, _234, 0).xyz), 0).x))))) + (_223 * ((_226 * ((_228 * inVelocityY.read(uint3(int4(_230, _231, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_230, _231, _234, 0).xyz), 0).x))) + (_225 * ((_228 * inVelocityY.read(uint3(int4(_230, _232, _233, 0).xyz), 0).x) + (_227 * inVelocityY.read(uint3(int4(_230, _232, _234, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+            }
+            else
+            {
+                if (UniformBuffer.Velocity == 2u)
                 {
-                    float N_2 = float(size.x - 2);
-                    float dtx_2 = _71.deltaTime * N_2;
-                    float dty_2 = _71.deltaTime * N_2;
-                    float dtz_2 = _71.deltaTime * N_2;
-                    float tmp1_2 = dtx_2 * inVelocityX.read(uint3(id), 0).x;
-                    float tmp2_2 = dty_2 * inVelocityY.read(uint3(id), 0).x;
-                    float tmp3_2 = dtz_2 * inVelocityZ.read(uint3(id), 0).x;
-                    float x_2 = fast::clamp(float(id.x) - tmp1_2, 0.5, N_2 + 0.5);
-                    float y_2 = fast::clamp(float(id.y) - tmp2_2, 0.5, N_2 + 0.5);
-                    float z_2 = fast::clamp(float(id.z) - tmp3_2, 0.5, N_2 + 0.5);
-                    float i0_2 = floor(x_2);
-                    float i1_2 = i0_2 + 1.0;
-                    float j0_2 = floor(y_2);
-                    float j1_2 = j0_2 + 1.0;
-                    float k0_2 = floor(z_2);
-                    float k1_2 = k0_2 + 1.0;
-                    float s1_2 = x_2 - i0_2;
-                    float s0_2 = 1.0 - s1_2;
-                    float t1_2 = y_2 - j0_2;
-                    float t0_2 = 1.0 - t1_2;
-                    float u1_2 = z_2 - k0_2;
-                    float u0_2 = 1.0 - u1_2;
-                    int i0i_2 = int(i0_2);
-                    int i1i_2 = int(i1_2);
-                    int j0i_2 = int(j0_2);
-                    int j1i_2 = int(j1_2);
-                    int k0i_2 = int(k0_2);
-                    int k1i_2 = int(k1_2);
-                    float4 _787 = float4((s0_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j0i_2, k1i_2)), 0).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i0i_2, j1i_2, k1i_2)), 0).x))))) + (s1_2 * ((t0_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j0i_2, k1i_2)), 0).x))) + (t1_2 * ((u0_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k0i_2)), 0).x) + (u1_2 * inVelocityZ.read(uint3(int3(i1i_2, j1i_2, k1i_2)), 0).x))))));
-                    outVelocity.write(_787, uint3(id));
-                } while (false);
+                    float _299 = float(_52 - 2);
+                    float _300 = UniformBuffer_1.DeltaTime * _299;
+                    int _301 = _56.x;
+                    int3 _305 = int4(_301, _56.yz, 0).xyz;
+                    float _317 = _299 + 0.5;
+                    float _318 = fast::clamp(float(_301) - (_300 * inVelocityX.read(uint3(_305), 0).x), 0.5, _317);
+                    float _321 = fast::clamp(float(_56.y) - (_300 * inVelocityY.read(uint3(_305), 0).x), 0.5, _317);
+                    float _324 = fast::clamp(float(_56.z) - (_300 * inVelocityZ.read(uint3(_305), 0).x), 0.5, _317);
+                    float _325 = floor(_318);
+                    float _327 = floor(_321);
+                    float _329 = floor(_324);
+                    float _331 = _318 - _325;
+                    float _333 = _321 - _327;
+                    float _334 = 1.0 - _333;
+                    float _335 = _324 - _329;
+                    float _336 = 1.0 - _335;
+                    int _337 = int(_325);
+                    int _338 = int(_325 + 1.0);
+                    int _339 = int(_327);
+                    int _340 = int(_327 + 1.0);
+                    int _341 = int(_329);
+                    int _342 = int(_329 + 1.0);
+                    outVelocity.write(float4(((1.0 - _331) * ((_334 * ((_336 * inVelocityZ.read(uint3(int4(_337, _339, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_337, _339, _342, 0).xyz), 0).x))) + (_333 * ((_336 * inVelocityZ.read(uint3(int4(_337, _340, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_337, _340, _342, 0).xyz), 0).x))))) + (_331 * ((_334 * ((_336 * inVelocityZ.read(uint3(int4(_338, _339, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_338, _339, _342, 0).xyz), 0).x))) + (_333 * ((_336 * inVelocityZ.read(uint3(int4(_338, _340, _341, 0).xyz), 0).x) + (_335 * inVelocityZ.read(uint3(int4(_338, _340, _342, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+                }
             }
         }
-    }
+        break;
+    } while(false);
 }
 

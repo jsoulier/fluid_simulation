@@ -3,20 +3,17 @@
 
 using namespace metal;
 
-struct uniformValue
+struct type_UniformBuffer
 {
-    float value;
+    float Value;
 };
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-kernel void main0(constant uniformValue& _35 [[buffer(0)]], texture3d<float, access::write> writeImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float, access::write> writeImage [[texture(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(writeImage.get_width(), writeImage.get_height(), writeImage.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    if (all(id < size))
+    uint3 _24 = uint3(writeImage.get_width(), writeImage.get_height(), writeImage.get_depth());
+    if (all(int3(gl_GlobalInvocationID) < int3(int(_24.x), int(_24.y), int(_24.z))))
     {
-        writeImage.write(float4(_35.value), uint3(id));
+        writeImage.write(float4(UniformBuffer.Value), uint3(gl_GlobalInvocationID));
     }
 }
 

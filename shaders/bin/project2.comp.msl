@@ -1,31 +1,49 @@
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
+
 #include <metal_stdlib>
 #include <simd/simd.h>
 
 using namespace metal;
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
+template <typename ImageT>
+void spvImageFence(ImageT img) { img.fence(); }
 
-kernel void main0(texture3d<float> inDivergence [[texture(0)]], texture3d<float> inPressure [[texture(1)]], texture3d<float, access::write> outPressure [[texture(2)]], sampler inDivergenceSmplr [[sampler(0)]], sampler inPressureSmplr [[sampler(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+struct type_UniformBuffer
 {
-    int3 size = int3(inDivergence.get_width(), inDivergence.get_height(), inDivergence.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    bool _34 = any(id >= (size - int3(1)));
-    bool _42;
-    if (!_34)
-    {
-        _42 = any(id <= int3(0));
-    }
-    else
-    {
-        _42 = _34;
-    }
-    if (_42)
-    {
-        return;
-    }
+    uint Phase;
+};
+
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float> inDivergence [[texture(0)]], texture3d<float, access::read_write> inOutPressure [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+{
     do
     {
-        outPressure.write(float4((inDivergence.read(uint3(id), 0).x + (1.0 * (((((inPressure.read(uint3((id + int3(1, 0, 0))), 0).x + inPressure.read(uint3((id + int3(-1, 0, 0))), 0).x) + inPressure.read(uint3((id + int3(0, 1, 0))), 0).x) + inPressure.read(uint3((id + int3(0, -1, 0))), 0).x) + inPressure.read(uint3((id + int3(0, 0, 1))), 0).x) + inPressure.read(uint3((id + int3(0, 0, -1))), 0).x))) / 6.0), uint3(id));
-    } while (false);
+        uint3 _45 = uint3(inDivergence.get_width(), inDivergence.get_height(), inDivergence.get_depth());
+        int3 _53 = int3(gl_GlobalInvocationID);
+        int _56 = _53.y;
+        int _64 = (2 * _53.x) + (((_56 + _53.z) + int(UniformBuffer.Phase)) & 1);
+        int3 _65 = _53;
+        _65.x = _64;
+        bool _74;
+        if (!any(_65 >= (int3(int(_45.x), int(_45.y), int(_45.z)) - int3(1))))
+        {
+            _74 = any(_65 <= int3(0));
+        }
+        else
+        {
+            _74 = true;
+        }
+        if (_74)
+        {
+            break;
+        }
+        spvImageFence(inOutPressure);
+        spvImageFence(inOutPressure);
+        spvImageFence(inOutPressure);
+        spvImageFence(inOutPressure);
+        spvImageFence(inOutPressure);
+        spvImageFence(inOutPressure);
+        inOutPressure.write(float4((inDivergence.read(uint3(int4(_64, _56, _53.z, 0).xyz), 0).x + (((((inOutPressure.read(uint3(uint3(_65 + int3(1, 0, 0)))).x + inOutPressure.read(uint3(uint3(_65 + int3(-1, 0, 0)))).x) + inOutPressure.read(uint3(uint3(_65 + int3(0, 1, 0)))).x) + inOutPressure.read(uint3(uint3(_65 + int3(0, -1, 0)))).x) + inOutPressure.read(uint3(uint3(_65 + int3(0, 0, 1)))).x) + inOutPressure.read(uint3(uint3(_65 + int3(0, 0, -1)))).x)) * 0.16666667163372039794921875), uint3(uint3(_65)));
+        break;
+    } while(false);
 }
 

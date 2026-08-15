@@ -1,34 +1,38 @@
-#version 450
+#include "shader.hlsl"
 
-#include "config.hpp"
-
-layout(local_size_x = THREADS, local_size_y = 1, local_size_z = THREADS) in;
-layout(set = 0, binding = 0) uniform sampler3D inImage;
-layout(set = 1, binding = 0, r32f) uniform writeonly image3D outImage;
-layout(set = 2, binding = 0) uniform uniformType
+cbuffer UniformBuffer : register(b0, space2)
 {
-    uint type;
+    uint Type;
 };
 
-void main()
+Texture3D<float> inImage : register(t0, space0);
+[[vk::image_format("r32f")]]
+RWTexture3D<float> outImage : register(u0, space1);
+
+[numthreads(THREADS, 1, THREADS)]
+void main(uint3 dispatchId : SV_DispatchThreadID)
 {
-    ivec3 size = textureSize(inImage, 0);
-    ivec3 id = ivec3(gl_GlobalInvocationID);
-    if (any(greaterThanEqual(id, size)))
+    uint width;
+    uint height;
+    uint depth;
+    inImage.GetDimensions(width, height, depth);
+    int3 size = int3(width, height, depth);
+    int3 id = int3(dispatchId);
+    if (any(id >= size))
     {
         return;
     }
-    uint N = size.x;
+    int N = size.x;
     float value;
     if (id.y == 1)
     {
-        id.y = int(N - 1);
-        value = texelFetch(inImage, ivec3(id.x, N - 2, id.z), 0).x;
+        id.y = N - 1;
+        value = inImage.Load(int4(id.x, N - 2, id.z, 0));
     }
     else
     {
         id.y = 0;
-        value = texelFetch(inImage, ivec3(id.x, 1, id.z), 0).x;
+        value = inImage.Load(int4(id.x, 1, id.z, 0));
     }
-    imageStore(outImage, id, vec4(type == 2 ? -value : value));
+    outImage[id] = Type == 2 ? -value : value;
 }

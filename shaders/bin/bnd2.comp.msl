@@ -3,42 +3,49 @@
 
 using namespace metal;
 
-struct uniformType
+struct type_UniformBuffer
 {
-    uint type;
+    uint Type;
 };
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u, 1u, 8u);
-
-kernel void main0(constant uniformType& _87 [[buffer(0)]], texture3d<float> inImage [[texture(0)]], texture3d<float, access::write> outImage [[texture(1)]], sampler inImageSmplr [[sampler(0)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float> inImage [[texture(0)]], texture3d<float, access::write> outImage [[texture(1)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    if (any(id >= size))
+    do
     {
-        return;
-    }
-    uint N = uint(size.x);
-    float value;
-    if (id.y == 1)
-    {
-        id.y = int(N - 1u);
-        value = inImage.read(uint3(int3(id.x, int(N - 2u), id.z)), 0).x;
-    }
-    else
-    {
-        id.y = 0;
-        value = inImage.read(uint3(int3(id.x, 1, id.z)), 0).x;
-    }
-    float _92;
-    if (_87.type == 2u)
-    {
-        _92 = -value;
-    }
-    else
-    {
-        _92 = value;
-    }
-    outImage.write(float4(_92), uint3(id));
+        uint3 _35 = uint3(inImage.get_width(), inImage.get_height(), inImage.get_depth());
+        int _39 = int(_35.x);
+        int3 _43 = int3(gl_GlobalInvocationID);
+        if (any(_43 >= int3(_39, int(_35.y), int(_35.z))))
+        {
+            break;
+        }
+        int3 _71;
+        float _72;
+        if (_43.y == 1)
+        {
+            int3 _54 = _43;
+            _54.y = _39 - 1;
+            _71 = _54;
+            _72 = inImage.read(uint3(int4(_43.x, _39 - 2, _43.z, 0).xyz), 0).x;
+        }
+        else
+        {
+            int3 _63 = _43;
+            _63.y = 0;
+            _71 = _63;
+            _72 = inImage.read(uint3(int4(_43.x, 1, _43.z, 0).xyz), 0).x;
+        }
+        float _80;
+        if (UniformBuffer.Type == 2u)
+        {
+            _80 = -_72;
+        }
+        else
+        {
+            _80 = _72;
+        }
+        outImage.write(float4(_80), uint3(uint3(_71)));
+        break;
+    } while(false);
 }
 

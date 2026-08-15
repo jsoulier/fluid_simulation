@@ -3,63 +3,55 @@
 
 using namespace metal;
 
-struct uniformDeltaTime
+struct type_UniformBuffer
 {
-    float deltaTime;
+    float DeltaTime;
 };
 
-constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(8u);
-
-kernel void main0(constant uniformDeltaTime& _62 [[buffer(0)]], texture3d<float> inDensity [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outDensity [[texture(4)]], sampler inDensitySmplr [[sampler(0)]], sampler inVelocityXSmplr [[sampler(1)]], sampler inVelocityYSmplr [[sampler(2)]], sampler inVelocityZSmplr [[sampler(3)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], texture3d<float> inDensity [[texture(0)]], texture3d<float> inVelocityX [[texture(1)]], texture3d<float> inVelocityY [[texture(2)]], texture3d<float> inVelocityZ [[texture(3)]], texture3d<float, access::write> outDensity [[texture(4)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
-    int3 size = int3(inDensity.get_width(), inDensity.get_height(), inDensity.get_depth());
-    int3 id = int3(gl_GlobalInvocationID);
-    bool _34 = any(id >= (size - int3(1)));
-    bool _42;
-    if (!_34)
-    {
-        _42 = any(id <= int3(0));
-    }
-    else
-    {
-        _42 = _34;
-    }
-    if (_42)
-    {
-        return;
-    }
     do
     {
-        float N = float(size.x - 2);
-        float dtx = _62.deltaTime * N;
-        float dty = _62.deltaTime * N;
-        float dtz = _62.deltaTime * N;
-        float tmp1 = dtx * inVelocityX.read(uint3(id), 0).x;
-        float tmp2 = dty * inVelocityY.read(uint3(id), 0).x;
-        float tmp3 = dtz * inVelocityZ.read(uint3(id), 0).x;
-        float x = fast::clamp(float(id.x) - tmp1, 0.5, N + 0.5);
-        float y = fast::clamp(float(id.y) - tmp2, 0.5, N + 0.5);
-        float z = fast::clamp(float(id.z) - tmp3, 0.5, N + 0.5);
-        float i0 = floor(x);
-        float i1 = i0 + 1.0;
-        float j0 = floor(y);
-        float j1 = j0 + 1.0;
-        float k0 = floor(z);
-        float k1 = k0 + 1.0;
-        float s1 = x - i0;
-        float s0 = 1.0 - s1;
-        float t1 = y - j0;
-        float t0 = 1.0 - t1;
-        float u1 = z - k0;
-        float u0 = 1.0 - u1;
-        int i0i = int(i0);
-        int i1i = int(i1);
-        int j0i = int(j0);
-        int j1i = int(j1);
-        int k0i = int(k0);
-        int k1i = int(k1);
-        float4 _298 = float4((s0 * ((t0 * ((u0 * inDensity.read(uint3(int3(i0i, j0i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i0i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i0i, j1i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i0i, j1i, k1i)), 0).x))))) + (s1 * ((t0 * ((u0 * inDensity.read(uint3(int3(i1i, j0i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i1i, j0i, k1i)), 0).x))) + (t1 * ((u0 * inDensity.read(uint3(int3(i1i, j1i, k0i)), 0).x) + (u1 * inDensity.read(uint3(int3(i1i, j1i, k1i)), 0).x))))));
-        outDensity.write(_298, uint3(id));
-    } while (false);
+        uint3 _43 = uint3(inDensity.get_width(), inDensity.get_height(), inDensity.get_depth());
+        int _47 = int(_43.x);
+        int3 _51 = int3(gl_GlobalInvocationID);
+        bool _60;
+        if (!any(_51 >= (int3(_47, int(_43.y), int(_43.z)) - int3(1))))
+        {
+            _60 = any(_51 <= int3(0));
+        }
+        else
+        {
+            _60 = true;
+        }
+        if (_60)
+        {
+            break;
+        }
+        float _71 = float(_47 - 2);
+        float _72 = UniformBuffer.DeltaTime * _71;
+        int _73 = _51.x;
+        int3 _77 = int4(_73, _51.yz, 0).xyz;
+        float _89 = _71 + 0.5;
+        float _90 = fast::clamp(float(_73) - (_72 * inVelocityX.read(uint3(_77), 0).x), 0.5, _89);
+        float _93 = fast::clamp(float(_51.y) - (_72 * inVelocityY.read(uint3(_77), 0).x), 0.5, _89);
+        float _96 = fast::clamp(float(_51.z) - (_72 * inVelocityZ.read(uint3(_77), 0).x), 0.5, _89);
+        float _97 = floor(_90);
+        float _99 = floor(_93);
+        float _101 = floor(_96);
+        float _103 = _90 - _97;
+        float _105 = _93 - _99;
+        float _106 = 1.0 - _105;
+        float _107 = _96 - _101;
+        float _108 = 1.0 - _107;
+        int _109 = int(_97);
+        int _110 = int(_97 + 1.0);
+        int _111 = int(_99);
+        int _112 = int(_99 + 1.0);
+        int _113 = int(_101);
+        int _114 = int(_101 + 1.0);
+        outDensity.write(float4(((1.0 - _103) * ((_106 * ((_108 * inDensity.read(uint3(int4(_109, _111, _113, 0).xyz), 0).x) + (_107 * inDensity.read(uint3(int4(_109, _111, _114, 0).xyz), 0).x))) + (_105 * ((_108 * inDensity.read(uint3(int4(_109, _112, _113, 0).xyz), 0).x) + (_107 * inDensity.read(uint3(int4(_109, _112, _114, 0).xyz), 0).x))))) + (_103 * ((_106 * ((_108 * inDensity.read(uint3(int4(_110, _111, _113, 0).xyz), 0).x) + (_107 * inDensity.read(uint3(int4(_110, _111, _114, 0).xyz), 0).x))) + (_105 * ((_108 * inDensity.read(uint3(int4(_110, _112, _113, 0).xyz), 0).x) + (_107 * inDensity.read(uint3(int4(_110, _112, _114, 0).xyz), 0).x)))))), uint3(gl_GlobalInvocationID));
+        break;
+    } while(false);
 }
 
