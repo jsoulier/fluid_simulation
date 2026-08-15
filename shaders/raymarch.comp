@@ -65,6 +65,7 @@ void main(int3 id : SV_DispatchThreadID)
     if (!HitBox(Position, direction, size, tMin, tMax))
     {
         outColor[id.xy] = result;
+        return;
     }
     int steps = min(int((tMax - tMin) / kStepSize) + 1, kMaxSteps);
     float stepSize = (tMax - tMin) / float(steps);

@@ -38,6 +38,7 @@ kernel void main0(constant type_UniformBuffer& UniformBuffer [[buffer(0)]], text
         if ((isunordered(_140, _135) || _140 <= _135))
         {
             outColor.write(float4(0.0), uint2(uint2(int3(gl_GlobalInvocationID).xy)));
+            break;
         }
         float _146 = _140 - _135;
         int _149 = min((int(_146) + 1), 512);
