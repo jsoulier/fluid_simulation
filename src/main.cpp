@@ -21,7 +21,8 @@
 #include <vector>
 
 #include "config.hpp"
-#include "helpers.hpp"
+#include "debug_group.hpp"
+#include "shader.hpp"
 #include "texture.hpp"
 
 enum TextureType

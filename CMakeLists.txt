@@ -24,8 +24,9 @@ add_executable(fluid_simulation WIN32
     lib/imgui/imgui_impl_sdlgpu3.cpp
     lib/imgui/imgui_tables.cpp
     lib/imgui/imgui_widgets.cpp
-    src/helpers.cpp
+    src/debug_group.cpp
     src/main.cpp
+    src/shader.cpp
     src/texture.cpp
 )
 set_target_properties(fluid_simulation PROPERTIES CXX_STANDARD 23)
